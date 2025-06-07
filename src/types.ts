@@ -13,4 +13,13 @@ export interface ChatSession {
   title?: string;
 }
 
+export interface Agent {
+  id: string;
+  name: string;
+  status: AgentStatus;
+  logs: string[];
+}
+
+export type AgentStatus = 'queued' | 'running' | 'completed';
+
 export type OverlayMode = 'none' | 'help' | 'history';
