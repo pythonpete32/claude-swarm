@@ -1,10 +1,11 @@
 import React from 'react';
 import { Box, Text, useInput } from 'ink';
-import { mockPrerequisites, type Prerequisite } from '../mocks/onboarding-data';
+import { type Prerequisite } from '../mocks/onboarding-data';
 
 export interface SplashScreenProps {
   onContinue: () => void;
-  onExit?: () => void;
+  onQuit: () => void;
+  prerequisites: Prerequisite[];
 }
 
 function PrerequisiteStatus({ prerequisite }: { prerequisite: Prerequisite }) {
@@ -43,12 +44,12 @@ function PrerequisiteStatus({ prerequisite }: { prerequisite: Prerequisite }) {
   );
 }
 
-export default function SplashScreen({ onContinue, onExit }: SplashScreenProps): JSX.Element {
+export default function SplashScreen({ onContinue, onQuit, prerequisites }: SplashScreenProps): JSX.Element {
   useInput((input, key) => {
     if (key.return) {
       onContinue();
     } else if (input === 'q' || key.escape) {
-      onExit?.();
+      onQuit();
     }
   });
 
@@ -91,8 +92,8 @@ export default function SplashScreen({ onContinue, onExit }: SplashScreenProps):
             <Text bold>Prerequisites Check:</Text>
             <Text></Text>
             
-            {mockPrerequisites.map((prerequisite, index) => (
-              <Box key={index} marginBottom={index < mockPrerequisites.length - 1 ? 1 : 0}>
+            {prerequisites.map((prerequisite, index) => (
+              <Box key={index} marginBottom={index < prerequisites.length - 1 ? 1 : 0}>
                 <PrerequisiteStatus prerequisite={prerequisite} />
               </Box>
             ))}
