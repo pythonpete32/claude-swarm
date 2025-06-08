@@ -12,8 +12,8 @@ if (major < 22) {
   );
 }
 
-import App from "./app";
 import OnboardingApp from "./components/onboarding/onboarding-app";
+import TaskManagerApp from "./components/task-manager/task-manager-app";
 import { setInkRenderer, onExit } from "./utils/terminal";
 import { isAlreadyOnboarded, shouldSkipOnboarding } from "./utils/onboarding";
 import { render } from "ink";
@@ -67,7 +67,7 @@ function MainApp() {
     return <OnboardingApp onComplete={() => setOnboardingComplete(true)} />;
   }
   
-  return <App />;
+  return <TaskManagerApp />;
 }
 
 // Start the app and capture the Ink renderer instance
