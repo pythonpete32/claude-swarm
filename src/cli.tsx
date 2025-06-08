@@ -13,11 +13,12 @@ if (major < 22) {
 }
 
 import App from "./app";
-import { APP_NAME } from "./constants/app";
+import OnboardingApp from "./components/onboarding/onboarding-app";
 import { setInkRenderer, onExit } from "./utils/terminal";
+import { isAlreadyOnboarded, shouldSkipOnboarding } from "./utils/onboarding";
 import { render } from "ink";
 import meow from "meow";
-import React from "react";
+import React, { useState } from "react";
 
 const cli = meow(
   `
@@ -56,8 +57,21 @@ if (cli.flags.version) {
   cli.showVersion();
 }
 
+// Create the main app component with onboarding logic
+function MainApp() {
+  const [onboardingComplete, setOnboardingComplete] = useState(false);
+  
+  const shouldOnboard = !shouldSkipOnboarding() && !isAlreadyOnboarded() && !onboardingComplete;
+  
+  if (shouldOnboard) {
+    return <OnboardingApp onComplete={() => setOnboardingComplete(true)} />;
+  }
+  
+  return <App />;
+}
+
 // Start the app and capture the Ink renderer instance
-const renderer = render(<App />);
+const renderer = render(<MainApp />);
 
 // Register the renderer with our terminal utilities for proper cleanup
 // This enables:
