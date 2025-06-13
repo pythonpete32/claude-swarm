@@ -75,27 +75,52 @@ fi
 # Create/attach tmux session
 SESSION_NAME="swarm-${BRANCH_NAME}"
 
-# Check if running in a terminal
-if [ -t 0 ] && [ -t 1 ]; then
-    if tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
-        echo "Attaching to existing tmux session: $SESSION_NAME"
+# Check if session already exists
+SESSION_EXISTS=false
+if tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
+    SESSION_EXISTS=true
+fi
+
+# If we're in a terminal and session exists, attach to it
+if [ -t 0 ] && [ -t 1 ] && [ "$SESSION_EXISTS" = true ]; then
+    echo "Attaching to existing tmux session: $SESSION_NAME"
+    exec tmux attach-session -t "$SESSION_NAME"
+fi
+
+# Create tmux session (detached if not in terminal)
+if [ "$SESSION_EXISTS" = false ]; then
+    echo "Creating tmux session: $SESSION_NAME"
+    
+    # Create session in detached mode
+    tmux new-session -d -s "$SESSION_NAME" -c "$WORKTREE_ABS_PATH" \; \
+         send-keys "# Ready to work on $BRANCH_NAME" C-m \; \
+         send-keys "# Run: claude /project:work-on-task \$ISSUE_NUMBER=XXX" C-m
+    
+    echo "✅ Tmux session created successfully"
+fi
+
+# Show summary and instructions
+echo ""
+echo "┌─────────────────────────────────────────────────────────────┐"
+echo "│ 🚀 Worktree Environment Ready!                              │"
+echo "├─────────────────────────────────────────────────────────────┤"
+echo "│ Branch:    $BRANCH_NAME"
+echo "│ Worktree:  $WORKTREE_ABS_PATH"
+echo "│ Session:   $SESSION_NAME"
+echo "├─────────────────────────────────────────────────────────────┤"
+echo "│ To start working:                                           │"
+echo "│   tmux attach-session -t $SESSION_NAME"
+echo "│                                                             │"
+echo "│ Or if you prefer:                                           │"
+echo "│   tmux a -t $SESSION_NAME"
+echo "└─────────────────────────────────────────────────────────────┘"
+
+# If in terminal and creating new session, offer to attach
+if [ -t 0 ] && [ -t 1 ] && [ "$SESSION_EXISTS" = false ]; then
+    echo ""
+    read -p "Would you like to attach to the session now? [Y/n] " -n 1 -r
+    echo ""
+    if [[ $REPLY =~ ^[Yy]$ ]] || [[ -z $REPLY ]]; then
         exec tmux attach-session -t "$SESSION_NAME"
-    else
-        echo "Creating new tmux session: $SESSION_NAME"
-        echo "Working directory: $WORKTREE_ABS_PATH"
-        
-        # Create tmux session with claude command ready
-        exec tmux new-session -s "$SESSION_NAME" -c "$WORKTREE_ABS_PATH" \; \
-             send-keys "# Ready to work on $BRANCH_NAME" C-m \; \
-             send-keys "# Run: claude /project:work-on-task \$ISSUE_NUMBER=XXX" C-m
     fi
-else
-    echo ""
-    echo "⚠️  Not running in a terminal - skipping tmux session creation"
-    echo ""
-    echo "To work in this worktree:"
-    echo "  cd $WORKTREE_ABS_PATH"
-    echo "  tmux new-session -s \"$SESSION_NAME\""
-    echo ""
-    echo "Or run this script directly in a terminal."
 fi
