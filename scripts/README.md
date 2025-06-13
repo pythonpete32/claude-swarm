@@ -71,7 +71,59 @@ Runs autonomous code reviews using headless Claude Code.
 
 **Usage:**
 ```bash
-./scripts/review-task.sh <task-number>
+./scripts/review-task.sh <issue-number>
+```
+
+### create-review-worktree.sh
+
+Creates isolated review environments for fresh code evaluation.
+
+**Usage:**
+```bash
+./scripts/create-review-worktree.sh [--test] <issue-number>
+```
+
+**Features:**
+- Auto-detects repository info from git remote
+- Creates isolated worktree for unbiased review
+- Optional GitHub project integration
+- Dynamic project column detection
+
+### cleanup-review-worktree.sh
+
+Cleans up review worktrees and merges feedback.
+
+**Usage:**
+```bash
+./scripts/cleanup-review-worktree.sh <issue-number>
+```
+
+## Environment Variables (Optional)
+
+The review scripts auto-detect repository configuration from git remote. For special cases, you can override with environment variables:
+
+| Variable | Purpose | Example |
+|----------|---------|---------|
+| `GITHUB_OWNER` | Override repository owner | `GITHUB_OWNER=upstream-org` |
+| `GITHUB_REPO` | Override repository name | `GITHUB_REPO=original-repo` |
+| `GITHUB_PROJECT_NUMBER` | Specify project board | `GITHUB_PROJECT_NUMBER=2` |
+| `GITHUB_PROJECT_ID` | Advanced project config | `GITHUB_PROJECT_ID=PVT_xyz` |
+
+**Common use cases for overrides:**
+- Working on a fork but using upstream's project board
+- CI/CD environments without proper git remote
+- Testing script behavior with different configurations
+
+**Normal usage (auto-detects everything):**
+```bash
+./scripts/create-review-worktree.sh 123
+```
+
+**Override example (using upstream project):**
+```bash
+# Your fork: yourname/claude-swarm
+# Use upstream project: pythonpete32/claude-swarm
+GITHUB_OWNER=pythonpete32 ./scripts/create-review-worktree.sh 123
 ```
 
 ## Worktree Directory Structure
