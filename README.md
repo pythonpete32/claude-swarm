@@ -9,7 +9,7 @@
   Your browser does not support the video tag.
 </video>
 
-**Quick Navigation:**
+
 [🚀 Getting Started](#getting-started) •
 [📋 Commands](#commands) • 
 [🔧 Scripts](#scripts) •
@@ -171,19 +171,20 @@ This ensures **consistency across all agents** - they all follow the same patter
 
 ## The Autonomous Review Loop
 
-When an AI agent completes work, the review script automatically checks the code quality:
+When an AI agent completes work, you run the `review-task.sh` script to automatically check the code quality:
 
-```mermaid
-graph LR
-    Work[AI Completes Work] --> Review[review-task.sh]
-    Review --> Check{Quality Check}
-    Check -->|Issues Found| Feedback[planning/review-{task}.md]
-    Check -->|Approved| PR[Auto-create PR]
-    Feedback --> Fix[AI Addresses Feedback]
-    Fix --> Review
+```bash
+# After AI completes work on a branch
+./scripts/review-task.sh feature-auth
+
+# The script either:
+# ✅ Creates a PR if code passes review
+# ❌ Generates feedback in planning/temp/review-feature-auth.md
 ```
 
-If there are issues, it generates specific feedback for the AI to address. If the code passes review, it automatically creates a pull request. This prevents bad code from getting merged while allowing continuous improvement.
+The review script uses headless Claude Code to analyze the changes and decide if they're ready to merge. If there are issues, it generates specific feedback for the AI to address. If the code passes review, it automatically creates a pull request.
+
+This prevents bad code from getting merged while allowing continuous improvement through iteration.
 
 ## Working with Multiple AI Instances
 
