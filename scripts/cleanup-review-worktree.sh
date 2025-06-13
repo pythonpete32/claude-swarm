@@ -8,6 +8,10 @@
 
 set -e  # Exit on any error
 
+# Configuration - Auto-detect from git remote or use environment variables
+OWNER="${GITHUB_OWNER:-$(git remote get-url origin | sed -n 's/.*github\.com[:/]\([^/]*\).*/\1/p')}"
+REPO="${GITHUB_REPO:-$(git remote get-url origin | sed -n 's/.*github\.com[:/][^/]*\/\([^/.]*\).*/\1/p')}"
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -230,7 +234,7 @@ update_github_status() {
         log_info "Checking for review tracking issues..."
         
         # Look for review tracking issues
-        local review_issues=$(gh issue list --repo pythonpete32/claude-swarm --search "Review Request: Issue #${issue_number}" --limit 5 --json number,title 2>/dev/null | jq -r '.[] | "\(.number):\(.title)"' 2>/dev/null || true)
+        local review_issues=$(gh issue list --repo "${OWNER}/${REPO}" --search "Review Request: Issue #${issue_number}" --limit 5 --json number,title 2>/dev/null | jq -r '.[] | "\(.number):\(.title)"' 2>/dev/null || true)
         
         if [ -n "$review_issues" ]; then
             echo "Found review tracking issues:"

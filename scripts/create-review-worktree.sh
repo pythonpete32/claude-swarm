@@ -8,19 +8,94 @@
 
 set -e  # Exit on any error
 
-# Configuration
-OWNER="pythonpete32"
-REPO="claude-swarm"
-PROJECT_NUMBER="2"
-PROJECT_ID="PVT_kwHOAvwmhc4A7Xq2"
+# Configuration - Auto-detect from git remote or use environment variables
+OWNER="${GITHUB_OWNER:-$(git remote get-url origin | sed -n 's/.*github\.com[:/]\([^/]*\).*/\1/p')}"
+REPO="${GITHUB_REPO:-$(git remote get-url origin | sed -n 's/.*github\.com[:/][^/]*\/\([^/.]*\).*/\1/p')}"
+PROJECT_NUMBER="${GITHUB_PROJECT_NUMBER:-}"
+PROJECT_ID="${GITHUB_PROJECT_ID:-}"
 
-# Field IDs for GitHub Project
-STATUS_FIELD_ID="PVTSSF_lAHOAvwmhc4A7Xq2zgvsF-A"
-PARENT_FIELD_ID="PVTF_lAHOAvwmhc4A7Xq2zgvsF-Y"
+# Field IDs for GitHub Project - make configurable
+STATUS_FIELD_ID="${GITHUB_STATUS_FIELD_ID:-}"
+PARENT_FIELD_ID="${GITHUB_PARENT_FIELD_ID:-}"
 
-# Status Options
-TODO_OPTION_ID="f75ad846"
-IN_PROGRESS_OPTION_ID="47fc9ee4"
+# Status Options - will be detected dynamically
+TODO_OPTION_ID="${GITHUB_TODO_OPTION_ID:-}"
+IN_PROGRESS_OPTION_ID="${GITHUB_IN_PROGRESS_OPTION_ID:-}"
+
+# Function: Detect project field IDs and status options dynamically
+detect_project_configuration() {
+    local project_number="$1"
+    local owner="$2"
+    
+    if [[ -z "$project_number" || -z "$owner" ]]; then
+        return 1
+    fi
+    
+    log_info "Detecting project configuration for project #$project_number..."
+    
+    # Get project fields
+    local fields_json
+    if ! fields_json=$(gh project field-list "$project_number" --owner "$owner" --format json 2>/dev/null); then
+        log_warn "Failed to detect project fields"
+        return 1
+    fi
+    
+    # Extract Status field ID and options
+    local status_field_info
+    status_field_info=$(echo "$fields_json" | jq -r '.fields[] | select(.name == "Status" and .type == "ProjectV2SingleSelectField")')
+    
+    if [[ -n "$status_field_info" ]]; then
+        # Update STATUS_FIELD_ID if not already set
+        if [[ -z "$STATUS_FIELD_ID" ]]; then
+            STATUS_FIELD_ID=$(echo "$status_field_info" | jq -r '.id')
+            log_info "Detected Status field ID: $STATUS_FIELD_ID"
+        fi
+        
+        # Detect appropriate status options
+        local options_json
+        options_json=$(echo "$status_field_info" | jq -r '.options[]')
+        
+        # Try to match common status column names (in priority order)
+        local todo_patterns=("Todo" "Backlog" "Ready for Work" "To Do" "New")
+        local progress_patterns=("In Progress" "Human Review" "PR/Review" "In Review" "Working")
+        
+        if [[ -z "$TODO_OPTION_ID" ]]; then
+            for pattern in "${todo_patterns[@]}"; do
+                local option_id
+                option_id=$(echo "$status_field_info" | jq -r ".options[] | select(.name == \"$pattern\") | .id")
+                if [[ -n "$option_id" && "$option_id" != "null" ]]; then
+                    TODO_OPTION_ID="$option_id"
+                    log_info "Detected TODO status: '$pattern' (ID: $option_id)"
+                    break
+                fi
+            done
+        fi
+        
+        if [[ -z "$IN_PROGRESS_OPTION_ID" ]]; then
+            for pattern in "${progress_patterns[@]}"; do
+                local option_id
+                option_id=$(echo "$status_field_info" | jq -r ".options[] | select(.name == \"$pattern\") | .id")
+                if [[ -n "$option_id" && "$option_id" != "null" ]]; then
+                    IN_PROGRESS_OPTION_ID="$option_id"
+                    log_info "Detected IN_PROGRESS status: '$pattern' (ID: $option_id)"
+                    break
+                fi
+            done
+        fi
+    fi
+    
+    # Extract Parent field ID if not set
+    if [[ -z "$PARENT_FIELD_ID" ]]; then
+        local parent_field_id
+        parent_field_id=$(echo "$fields_json" | jq -r '.fields[] | select(.name == "Parent issue" or .name == "Parent" or .name == "Epic") | .id' | head -1)
+        if [[ -n "$parent_field_id" && "$parent_field_id" != "null" ]]; then
+            PARENT_FIELD_ID="$parent_field_id"
+            log_info "Detected Parent field ID: $PARENT_FIELD_ID"
+        fi
+    fi
+    
+    return 0
+}
 
 # Colors for output
 RED='\033[0;31m'
@@ -61,6 +136,16 @@ check_prerequisites() {
         exit 1
     fi
     
+    # Validate auto-detected repository info
+    if [ -z "$OWNER" ] || [ -z "$REPO" ]; then
+        log_error "Failed to auto-detect repository information"
+        echo "Could not extract owner/repo from git remote origin"
+        echo "Set manually with: export GITHUB_OWNER=your-username GITHUB_REPO=your-repo"
+        exit 1
+    fi
+    
+    log_info "Repository: $OWNER/$REPO"
+    
     # Check if Claude CLI is available
     if ! command -v claude &> /dev/null; then
         log_error "Claude CLI not found"
@@ -81,10 +166,12 @@ check_prerequisites() {
         exit 1
     fi
     
-    # Check if required project scope is available
-    if ! gh auth status 2>&1 | grep -q "project"; then
-        log_warn "GitHub CLI missing project scope"
-        echo "Run: gh auth refresh -s project"
+    # Check project scope only if project integration is configured
+    if [[ -n "$PROJECT_NUMBER" ]]; then
+        if ! gh auth status 2>&1 | grep -q "project"; then
+            log_warn "GitHub CLI missing project scope (needed for project integration)"
+            echo "Run: gh auth refresh -s project"
+        fi
     fi
     
     log_info "Prerequisites check completed"
@@ -212,39 +299,53 @@ EOF
     local review_issue_number="$(echo $issue_url | grep -o '[0-9]*$')"
     log_info "Created review issue #${review_issue_number}"
     
-    # Add to project with error handling
-    if ! gh project item-add $PROJECT_NUMBER --owner $OWNER --url "$issue_url" 2>/dev/null; then
-        log_warn "Failed to add issue to project (may not have project scope)"
-        REVIEW_ISSUE_NUMBER="$review_issue_number"
-        return 0
-    fi
-    
-    # Wait for GitHub sync
-    sleep 3
-    
-    # Get project item ID
-    local item_id
-    item_id=$(gh project item-list $PROJECT_NUMBER --owner $OWNER --format json 2>/dev/null | \
-        jq -r ".items[] | select(.content.number == $review_issue_number) | .id" 2>/dev/null)
-    
-    if [ -n "$item_id" ]; then
-        # Set status to Todo
-        gh project item-edit \
-            --project-id $PROJECT_ID \
-            --id "$item_id" \
-            --field-id $STATUS_FIELD_ID \
-            --single-select-option-id $TODO_OPTION_ID 2>/dev/null || log_warn "Failed to set project status"
+    # Add to project with error handling (skip if no project configured)
+    if [[ -n "$PROJECT_NUMBER" && -n "$OWNER" ]]; then
+        # Detect project configuration dynamically
+        detect_project_configuration "$PROJECT_NUMBER" "$OWNER" || log_warn "Could not detect all project fields"
         
-        # Set parent relationship to epic #20
-        gh project item-edit \
-            --project-id $PROJECT_ID \
-            --id "$item_id" \
-            --field-id $PARENT_FIELD_ID \
-            --text "#20" 2>/dev/null || log_warn "Failed to set parent relationship"
-        
-        log_info "Issue added to project with relationships"
+        if gh project item-add $PROJECT_NUMBER --owner $OWNER --url "$issue_url" 2>/dev/null; then
+            log_info "Added issue to project #$PROJECT_NUMBER"
+            
+            # Only attempt advanced project integration if all IDs are available
+            if [[ -n "$PROJECT_ID" && -n "$STATUS_FIELD_ID" && -n "$TODO_OPTION_ID" ]]; then
+                # Wait for GitHub sync
+                sleep 3
+                
+                # Get project item ID
+                local item_id
+                item_id=$(gh project item-list $PROJECT_NUMBER --owner $OWNER --format json 2>/dev/null | \
+                    jq -r ".items[] | select(.content.number == $review_issue_number) | .id" 2>/dev/null)
+                
+                if [ -n "$item_id" ]; then
+                    # Set status to Todo
+                    gh project item-edit \
+                        --project-id $PROJECT_ID \
+                        --id "$item_id" \
+                        --field-id $STATUS_FIELD_ID \
+                        --single-select-option-id $TODO_OPTION_ID 2>/dev/null || log_warn "Failed to set project status"
+                    
+                    # Set parent relationship if configured
+                    if [[ -n "$PARENT_FIELD_ID" ]]; then
+                        gh project item-edit \
+                            --project-id $PROJECT_ID \
+                            --id "$item_id" \
+                            --field-id $PARENT_FIELD_ID \
+                            --text "#20" 2>/dev/null || log_warn "Failed to set parent relationship"
+                    fi
+                    
+                    log_info "Issue added to project with relationships"
+                else
+                    log_warn "Could not configure project relationships"
+                fi
+            else
+                log_info "Basic project integration complete (advanced fields not configured)"
+            fi
+        else
+            log_warn "Failed to add issue to project (may not have project scope)"
+        fi
     else
-        log_warn "Could not configure project relationships"
+        log_info "No GitHub project configured, skipping project integration"
     fi
     
     REVIEW_ISSUE_NUMBER="$review_issue_number"
