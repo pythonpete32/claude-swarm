@@ -1,6 +1,22 @@
-# Claude Swarm
+<div align="center">
+
+# 🤖 Claude Swarm
 
 **Orchestrate a swarm of AI agents to build quality software at scale.**
+
+<video width="600" controls>
+  <source src="banner.mp4" type="video/mp4">
+  Your browser does not support the video tag.
+</video>
+
+
+[🚀 Getting Started](#getting-started) •
+[📋 Commands](#commands) • 
+[🔧 Scripts](#scripts) •
+[🔄 Review Loop](#the-autonomous-review-loop) •
+[🏗️ Project Structure](#project-structure)
+
+</div>
 
 ## Purpose
 
@@ -155,19 +171,20 @@ This ensures **consistency across all agents** - they all follow the same patter
 
 ## The Autonomous Review Loop
 
-Claude Swarm implements a **quality ratchet mechanism** - each iteration can only improve code quality:
+When an AI agent completes work, you run the `review-task.sh` script to automatically check the code quality:
 
-```mermaid
-graph LR
-    Work[AI Completes Work] --> Review[review-task.sh]
-    Review --> Check{Quality Check}
-    Check -->|Issues Found| Feedback[planning/review-{task}.md]
-    Check -->|Approved| PR[Auto-create PR]
-    Feedback --> Fix[AI Addresses Feedback]
-    Fix --> Review
+```bash
+# After AI completes work on a branch
+./scripts/review-task.sh feature-auth
+
+# The script either:
+# ✅ Creates a PR if code passes review
+# ❌ Generates feedback in planning/temp/review-feature-auth.md
 ```
 
-This creates **emergent quality** through iteration rather than hoping for perfection on first attempt.
+The review script uses headless Claude Code to analyze the changes and decide if they're ready to merge. If there are issues, it generates specific feedback for the AI to address. If the code passes review, it automatically creates a pull request.
+
+This prevents bad code from getting merged while allowing continuous improvement through iteration.
 
 ## Working with Multiple AI Instances
 
