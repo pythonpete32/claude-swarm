@@ -1,131 +1,166 @@
-# Review Automation Workflow
+# Claude Agent Swarm: Review Layer Documentation
 
 ## Overview
 
-The Review Automation workflow enables you to run multiple Claude agents simultaneously without them interfering with each other. Using git worktrees, each review process gets its own isolated environment, preventing context confusion and file conflicts between parallel agent sessions.
+This system enables **two-layer agent swarm architecture** for software development using GitHub Projects and git worktrees. Implementation agents work on tasks in parallel, then separate review agents evaluate their work with fresh perspective before creating PRs.
 
-### Problem Solved
+### The Two-Layer Agent Architecture
 
-**Before**: Running multiple agents in the same repository causes:
-- **Context mixing**: Agents share the same conversation context and get confused by each other's system prompts
-- **File conflicts**: When agents work in parallel, one agent updates a file while another is working on a different file, leading to confusion about unexpected changes
-- **Cognitive overload**: Complex worktree management requires users to understand git internals
+**Layer 1: Implementation Agents**
+- Multiple agents work simultaneously on different GitHub issues
+- Each agent works in isolated worktree: `../work-issue-NUMBER-timestamp/`
+- Agents implement features, fix bugs, or complete assigned tasks
+- Work happens in parallel without agent interference
 
-**After**: Isolated worktree environments allow:
-- **Clean separation**: Each agent works in its own copy of the repository
-- **Parallel execution**: Run multiple reviews simultaneously without interference  
-- **Simple commands**: Easy-to-use slash commands handle all the complexity
+**Layer 2: Review Agents (Smoke Test Layer)**  
+- **Fresh agents** review completed work with clean context
+- Each review agent works in separate worktree: `../review-issue-NUMBER-timestamp/`
+- **Critical isolation**: Review agents have no implementation context
+- Objective evaluation leads to APPROVED (auto-PR) or NEEDS_WORK (feedback)
+
+### Problem Solved: Agent Context Contamination
+
+**The Inception Problem**: If the same agent that implemented code also reviews it:
+- **Implementation bias**: Agent remembers their reasoning and assumptions
+- **Context contamination**: Can't objectively evaluate their own work
+- **Missing issues**: Blind to problems they inadvertently created
+
+**The Fresh Review Solution**: Separate review agents with isolated context:
+- **Clean perspective**: No knowledge of implementation decisions
+- **Objective evaluation**: Reviews code as written, not as intended
+- **Fresh eyes**: Catches issues the implementation agent missed
 
 ### Key Benefits
 
-- 🔄 **Parallel Processing**: Run multiple agents simultaneously on different issues
-- 🏗️ **Complete Isolation**: Each agent gets its own workspace with full context
-- 🤖 **Autonomous Workflows**: Clear decision paths for automatic PR creation or feedback
-- 🎯 **Simplified Interface**: Complex worktree operations hidden behind simple commands
-- 📊 **Comprehensive Reviews**: Full code quality, testing, and security validation
-- 🔗 **GitHub Integration**: Seamless issue tracking and PR creation
+- 🔄 **Two-Layer Architecture**: Implementation agents + independent review agents
+- 🧠 **Fresh Perspective**: Review agents have no implementation bias or context contamination
+- 🏗️ **Complete Isolation**: Each agent works in separate worktree with clean context
+- 🤖 **Autonomous Decisions**: Review agents auto-create PRs or generate structured feedback
+- 🎯 **GitHub Projects Integration**: Works with standard software development workflow
+- 📊 **Objective Quality Control**: Fresh agents catch issues implementation agents miss
 
-## Quick Start
+## Quick Start: Review Layer Commands
 
 ```bash
-# Start an isolated review for issue #25
+# After implementation work is complete, start fresh review
 /project:run-smoke-test 25
 
-# After review completes, clean up the worktree
+# After review completes, merge feedback and clean up
 /project:cleanup-smoke-test 25
 ```
 
-That's it! You can run multiple reviews in parallel - each gets its own isolated environment.
+**Key Point**: These commands manage the **review layer** - fresh agents that objectively evaluate completed implementation work.
 
-## Architecture Overview
+## Two-Layer Architecture Overview
 
 ```mermaid
 graph TD
-    A[Agent 1: Issue #42] --> B[/run-smoke-test 42]
-    A1[Agent 2: Issue #43] --> B1[/run-smoke-test 43] 
-    A2[Agent 3: Issue #44] --> B2[/run-smoke-test 44]
+    subgraph "GitHub Projects"
+        I1[Issue #42: Auth Feature]
+        I2[Issue #43: Database Opt]
+        I3[Issue #44: UI Component]
+    end
     
-    B --> C[Isolated worktree: ../review-issue-42-*]
-    B1 --> C1[Isolated worktree: ../review-issue-43-*]
-    B2 --> C2[Isolated worktree: ../review-issue-44-*]
+    subgraph "Layer 1: Implementation Agents"
+        A1[Agent A: ../work-issue-42-*] --> I1
+        A2[Agent B: ../work-issue-43-*] --> I2  
+        A3[Agent C: ../work-issue-44-*] --> I3
+    end
     
-    C --> D[Agent 1 works in isolation]
-    C1 --> D1[Agent 2 works in isolation]
-    C2 --> D2[Agent 3 works in isolation]
+    subgraph "Layer 2: Review Agents (Fresh Context)"
+        A1 --> R1["/run-smoke-test 42<br/>Fresh Review Agent<br/>../review-issue-42-*"]
+        A2 --> R2["/run-smoke-test 43<br/>Fresh Review Agent<br/>../review-issue-43-*"]
+        A3 --> R3["/run-smoke-test 44<br/>Fresh Review Agent<br/>../review-issue-44-*"]
+    end
     
-    D --> E{Review Decision}
-    D1 --> E1{Review Decision}
-    D2 --> E2{Review Decision}
+    subgraph "Review Decisions"
+        R1 --> D1{Fresh Objective<br/>Review}
+        R2 --> D2{Fresh Objective<br/>Review}
+        R3 --> D3{Fresh Objective<br/>Review}
+    end
     
-    E -->|APPROVED| F[Create PR #42]
-    E -->|NEEDS_WORK| G[Create feedback]
-    E1 -->|APPROVED| F1[Create PR #43]
-    E2 -->|NEEDS_WORK| G2[Create feedback]
+    D1 -->|APPROVED| P1[Auto-Create PR #42]
+    D1 -->|NEEDS_WORK| F1[Feedback → Implementation Agent]
+    D2 -->|APPROVED| P2[Auto-Create PR #43]
+    D2 -->|NEEDS_WORK| F2[Feedback → Implementation Agent]
+    D3 -->|APPROVED| P3[Auto-Create PR #44]
+    D3 -->|NEEDS_WORK| F3[Feedback → Implementation Agent]
     
-    F --> H[/cleanup-smoke-test 42]
-    G --> H
-    F1 --> H1[/cleanup-smoke-test 43]
-    G2 --> H2[/cleanup-smoke-test 44]
+    P1 --> C1["/cleanup-smoke-test 42"]
+    F1 --> C1
+    P2 --> C2["/cleanup-smoke-test 43"]
+    F2 --> C2
+    P3 --> C3["/cleanup-smoke-test 44"]
+    F3 --> C3
 ```
 
 ## Detailed Workflow
 
-### Phase 1: Review Initiation
+### Phase 1: Fresh Review Agent Initiation
 
 #### Command: `/project:run-smoke-test ISSUE_NUMBER`
 
-**What happens:**
-1. **Creates isolated worktree** at `../review-issue-NUMBER-TIMESTAMP/`
-2. **Copies context files** (CLAUDE.md, .claude/commands/) so the agent has full context
-3. **Creates GitHub tracking issue** with proper relationships
-4. **Launches Claude agent** in the isolated environment
+**Purpose**: Launch a **fresh review agent** with clean context to objectively evaluate completed implementation work.
 
-**Files created:**
+**What happens:**
+1. **Creates isolated review worktree** at `../review-issue-NUMBER-TIMESTAMP/`
+2. **Copies clean context files** (CLAUDE.md, .claude/commands/) - NO implementation context
+3. **Creates GitHub tracking issue** linking review to original implementation issue
+4. **Launches fresh Claude agent** in isolated environment with zero implementation bias
+
+**Review Worktree Structure:**
 ```
 ../review-issue-25-20250613-123456/
-├── CLAUDE.md                    # Project guidance
-├── .claude/commands/            # All available commands
-│   ├── code-review.md          # Enhanced with decision tree
-│   ├── run-smoke-test.md       # This workflow
+├── CLAUDE.md                    # Clean project guidance
+├── .claude/commands/            # Review commands available
+│   ├── code-review.md          # Enhanced decision tree logic
+│   ├── run-smoke-test.md       # This workflow documentation  
 │   └── cleanup-smoke-test.md   # Cleanup process
 ├── scripts/                    # All project scripts
-├── [all other project files]  # Complete codebase copy
+├── [complete codebase copy]    # Implementation work to review
 ```
 
-#### Prerequisites Checked:
-- ✅ Git repository
-- ✅ Claude CLI installed and accessible
-- ✅ GitHub CLI authenticated with project scope
-- ✅ CLAUDE.md and .claude/ directory (recommended)
+**Critical Isolation Features:**
+- ✅ **Fresh conversation context** - No implementation agent history
+- ✅ **Clean file state** - No knowledge of implementation process
+- ✅ **Objective perspective** - Evaluates work as written, not as intended
+- ✅ **Complete codebase** - Can review implementation in full context
 
-### Phase 2: Interactive Review Process
+#### Prerequisites Automatically Checked:
+- ✅ Git repository with implementation work
+- ✅ Claude CLI accessible for fresh agent launch
+- ✅ GitHub CLI authenticated for issue tracking
+- ✅ CLAUDE.md and .claude/ for consistent agent behavior
 
-Once in the worktree, Claude automatically follows the `/project:review-issue` process:
+### Phase 2: Fresh Agent Review Process
 
-#### Step 1: Understand Requirements
+The **fresh review agent** (with zero implementation bias) follows the enhanced `/project:review-issue` process:
+
+#### Step 1: Fresh Requirements Understanding
 ```bash
-# Fetch original issue details
+# Review agent discovers original requirements with clean eyes
 gh issue view $ISSUE_NUMBER
 
-# Key information extracted:
-# - Original requirements and acceptance criteria
-# - Expected behavior and validation mentioned
-# - Linked context and dependencies
+# Fresh perspective extracts:
+# - What was supposed to be implemented
+# - Acceptance criteria and success metrics
+# - Expected behavior from user perspective
+# - NO KNOWLEDGE of implementation decisions or challenges
 ```
 
-#### Step 2: Review Implementation
+#### Step 2: Objective Implementation Analysis
 ```bash
-# Check for work report
-cat planning/temp/work-report/$ISSUE_NUMBER.md
+# Review agent evaluates what was actually delivered
+cat planning/temp/work-report/$ISSUE_NUMBER.md  # If exists
 
-# Review actual changes
+# Analyze changes without implementation bias
 git diff main..$(git branch --show-current)
 
-# Analysis includes:
-# - Code quality and style
-# - Adherence to CLAUDE.md conventions
-# - Completeness of implementation
-# - Test coverage
+# Fresh evaluation focuses on:
+# - Does implementation match requirements?
+# - Code quality from external perspective
+# - Are there obvious issues missed?
+# - Completeness against original spec
 ```
 
 #### Step 3: Comprehensive Validation
