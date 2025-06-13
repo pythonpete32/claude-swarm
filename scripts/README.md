@@ -61,9 +61,11 @@ Initializes a new Claude Swarm project with GitHub integration.
 
 **Features:**
 - Creates GitHub project board
-- Sets up proper column structure
-- Creates issue labels
-- Links project to repository
+- Creates required issue labels for claude-swarm workflow
+  - `enhancement`, `scripts`, `high-priority`, `commands`, `template`
+  - `testing`, `validation`, `documentation`, `user-experience`
+- Links project to repository with proper error handling
+- Validates setup and provides troubleshooting guidance
 
 ### review-task.sh
 
