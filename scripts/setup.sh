@@ -63,12 +63,60 @@ else
     echo "✅ Created project: $PROJECT_URL"
 fi
 
-# Link project to repository using the node ID
+# Create required GitHub labels
+echo "🏷️  Creating GitHub labels..."
+
+# Function to create a label if it doesn't exist
+create_label_if_not_exists() {
+    local label="$1"
+    local color="$2"
+    local description="$3"
+    
+    # Check if label already exists
+    if gh label list --json name --jq '.[].name' | grep -q "^${label}$"; then
+        echo "✅ Label '$label' already exists"
+    else
+        if gh label create "$label" --color "$color" --description "$description"; then
+            echo "✅ Created label '$label'"
+        else
+            echo "❌ Failed to create label '$label'"
+        fi
+    fi
+}
+
+# Create all required labels
+create_label_if_not_exists "scripts" "0e8a16" "Scripts and automation tools"
+create_label_if_not_exists "commands" "1d76db" "Claude command development"
+create_label_if_not_exists "testing" "fbca04" "Testing and validation"
+create_label_if_not_exists "validation" "f9d0c4" "Validation and verification"
+create_label_if_not_exists "user-experience" "c5def5" "User experience improvements"
+create_label_if_not_exists "template" "d4c5f9" "Template and boilerplate code"
+create_label_if_not_exists "high-priority" "d93f0b" "High priority tasks"
+
+# Link project to repository using the project number
 echo "🔗 Linking project to repository..."
-if gh project link "$PROJECT_NODE_ID" --repo "$REPO_OWNER/$REPO_NAME" 2>/dev/null; then
+if gh project link "$PROJECT_NUMBER" --owner "$REPO_OWNER" --repo "$REPO_OWNER/$REPO_NAME"; then
     echo "✅ Project linked successfully"
+    
+    # Verify linking worked by checking if project appears in repo using GraphQL
+    echo "🔍 Verifying project link..."
+    LINKED_PROJECTS=$(gh api graphql -f query='query { repository(owner: "'"$REPO_OWNER"'", name: "'"$REPO_NAME"'") { projectsV2(first: 10) { nodes { title } } } }' --jq '.data.repository.projectsV2.nodes | length')
+    
+    if [ "$LINKED_PROJECTS" -gt 0 ]; then
+        echo "✅ Project link verified successfully"
+    else
+        echo "⚠️  Warning: Project linking may have failed - project not visible in repository"
+        echo "   Please manually link the project:"
+        echo "   1. Go to https://github.com/${REPO_OWNER}/${REPO_NAME}/projects"
+        echo "   2. Click 'Link a project'"
+        echo "   3. Select project: $REPO_NAME"
+    fi
 else
-    echo "⚠️  Project may already be linked (this is okay)"
+    echo "❌ Failed to link project to repository"
+    echo "   Please manually link the project:"
+    echo "   1. Go to https://github.com/${REPO_OWNER}/${REPO_NAME}/projects"
+    echo "   2. Click 'Link a project'"
+    echo "   3. Select project: $REPO_NAME"
 fi
 
 echo ""
