@@ -79,64 +79,128 @@ Based on the issue requirements, perform manual smoke tests:
 
 Document each validation step and its result.
 
-### 5. Generate Review Outcome
+### 5. Make Review Decision (Enhanced Decision Tree)
 
-**If issues found**:
-- Create `planning/temp/review-feedback/$ISSUE_NUMBER-feedback.md`
-- Structure:
-  ```markdown
-  # Review Feedback for Issue #$ISSUE_NUMBER
-  
-  ## Summary
-  [Brief overview of review findings]
-  
-  ## Issues Found
-  
-  ### 1. [Issue Title]
-  **Problem**: [What's wrong]
-  **Expected**: [What should happen]
-  **Found**: [What actually happens]
-  **Fix**: [Suggested solution]
-  
-  ### 2. [Next Issue]
-  ...
-  
-  ## Required Actions
-  - [ ] Fix [specific issue]
-  - [ ] Add test for [scenario]
-  - [ ] Update [documentation/code]
-  
-  ## Validation Steps to Retry
-  1. [Step that failed]
-  2. [How to verify when fixed]
-  ```
+After completing all validation steps, you MUST make one of two decisions:
 
-**If all checks pass**:
-- Create PR with comprehensive description:
-  ```bash
-  gh pr create \
-    --title "[Clear description of implementation]" \
-    --body "## Summary
-    
-    Implements #$ISSUE_NUMBER
-    
-    ## Changes Made
-    - [List key changes]
-    
-    ## Testing Done
-    - ✅ All automated tests pass
-    - ✅ Manual smoke tests completed:
-      - [List specific validations performed]
-    
-    ## Validation Instructions
-    To verify this implementation:
-    1. [Specific step]
-    2. [Next step]
-    3. [Expected result]
-    
-    closes #$ISSUE_NUMBER" \
-    --assignee @me
-  ```
+#### 🟢 APPROVED PATH - All checks passed, ready for merge
+
+**When to choose APPROVED**:
+- All automated tests pass
+- Manual smoke tests successful
+- Code quality meets standards
+- No security concerns
+- Documentation updated appropriately
+- All requirements satisfied
+
+**APPROVED Actions**:
+1. **Final validation** - Run tests one more time to confirm
+2. **Create PR immediately** using this exact command:
+   ```bash
+   gh pr create \
+     --title "feat(scope): [clear description of implementation] (#$ISSUE_NUMBER)" \
+     --body "## Summary
+   
+   Implements #$ISSUE_NUMBER - [brief description of what was implemented]
+   
+   ## Changes Made
+   - [List specific changes made]
+   - [Include any breaking changes]
+   - [Note new features or improvements]
+   
+   ## Testing Completed
+   - ✅ All automated tests pass
+   - ✅ Manual validation completed:
+     - [List specific tests performed]
+     - [Include edge cases tested]
+     - [Note any performance validation]
+   
+   ## Validation Instructions
+   To verify this implementation:
+   1. [Specific step to test main functionality]
+   2. [Step to verify edge cases]
+   3. [Expected results]
+   
+   Closes #$ISSUE_NUMBER" \
+     --assignee @me \
+     --label "enhancement" \
+     --project "claude-swarm"
+   ```
+3. **Report success** - State that PR was created and provide the URL
+
+#### 🔴 NEEDS_WORK PATH - Issues found that must be addressed
+
+**When to choose NEEDS_WORK**:
+- Tests failing
+- Bugs discovered during testing
+- Code quality issues
+- Security vulnerabilities
+- Incomplete implementation
+- Missing documentation
+- Performance problems
+
+**NEEDS_WORK Actions**:
+1. **Create detailed feedback document** at `planning/temp/review-feedback/$ISSUE_NUMBER-feedback.md`:
+   ```markdown
+   # Review Feedback for Issue #$ISSUE_NUMBER
+   
+   ## Summary
+   Review identified [number] issues that must be addressed before approval.
+   
+   ## Issues Found (Prioritized by Severity)
+   
+   ### 🔴 CRITICAL: [High Priority Issue]
+   **Problem**: [Specific description of what's wrong]
+   **Expected**: [What should happen instead]
+   **Found**: [Current behavior or implementation]
+   **Fix**: [Specific steps to resolve]
+   **Impact**: [Why this must be fixed]
+   
+   ### 🟡 MEDIUM: [Medium Priority Issue]
+   **Problem**: [Description]
+   **Expected**: [Expected behavior]
+   **Found**: [Current state]
+   **Fix**: [Suggested solution]
+   
+   ### 🟢 LOW: [Nice to have improvement]
+   **Problem**: [Description]
+   **Fix**: [Optional improvement]
+   
+   ## Required Actions (Must Complete All)
+   - [ ] [Critical fix #1 - specific action required]
+   - [ ] [Critical fix #2 - specific action required]  
+   - [ ] [Medium priority fix - specific action]
+   - [ ] [Add missing tests for scenario X]
+   - [ ] [Update documentation for feature Y]
+   
+   ## Validation Steps to Retry After Fixes
+   1. [Specific test to run to verify fix #1]
+   2. [Command to verify fix #2]
+   3. [How to confirm all issues resolved]
+   4. [Final validation before re-review]
+   
+   ## Next Steps
+   1. Address all required actions above
+   2. Test fixes using validation steps
+   3. Re-run review: `/project:review-issue $ISSUE_NUMBER`
+   
+   Status: **NEEDS_WORK** - Issues must be resolved before approval
+   ```
+2. **Save and report** - Confirm feedback file was created and provide path
+
+#### ⚠️ Decision Making Guidelines
+
+**Be decisive but thorough**:
+- Don't create PR if ANY significant issues exist
+- Don't mark NEEDS_WORK for minor style issues that don't affect functionality
+- When in doubt, prefer NEEDS_WORK with constructive feedback
+- Focus on user impact and system reliability
+
+**CRITICAL decision criteria**:
+- **Tests must pass** (blocking for APPROVED)
+- **Core functionality must work** (blocking for APPROVED)  
+- **No security vulnerabilities** (blocking for APPROVED)
+- **No data loss or corruption risks** (blocking for APPROVED)
 
 ## Key Review Points
 
@@ -209,4 +273,19 @@ npm run dev
 - **Verify claims**: Don't just trust the report, validate everything
 - **Be constructive**: Feedback should guide, not criticize
 
-The goal is to catch issues before PR creation, saving time and ensuring quality. 
+## Review Decision Summary
+
+**At the end of every review, you MUST:**
+
+1. **State your decision clearly**: "APPROVED" or "NEEDS_WORK"
+2. **Execute the appropriate action**:
+   - **APPROVED**: Create PR using the exact command template
+   - **NEEDS_WORK**: Create detailed feedback document with specific fixes
+3. **Provide next steps**: Clear guidance on what happens next
+
+**Success criteria**:
+- APPROVED reviews result in a created PR with proper metadata
+- NEEDS_WORK reviews result in actionable feedback that guides fixes
+- All decisions are well-justified and focus on user impact
+
+The goal is to catch issues before PR creation, saving time and ensuring quality while maintaining a clear, automated workflow. 
