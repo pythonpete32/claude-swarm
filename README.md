@@ -1,6 +1,22 @@
-# Claude Swarm
+<div align="center">
+
+# 🤖 Claude Swarm
 
 **Orchestrate a swarm of AI agents to build quality software at scale.**
+
+<video width="600" controls>
+  <source src="banner.mp4" type="video/mp4">
+  Your browser does not support the video tag.
+</video>
+
+**Quick Navigation:**
+[🚀 Getting Started](#getting-started) •
+[📋 Commands](#commands) • 
+[🔧 Scripts](#scripts) •
+[🔄 Review Loop](#the-autonomous-review-loop) •
+[🏗️ Project Structure](#project-structure)
+
+</div>
 
 ## Purpose
 
@@ -155,7 +171,7 @@ This ensures **consistency across all agents** - they all follow the same patter
 
 ## The Autonomous Review Loop
 
-Claude Swarm implements a **quality ratchet mechanism** - each iteration can only improve code quality:
+When an AI agent completes work, the review script automatically checks the code quality:
 
 ```mermaid
 graph LR
@@ -167,7 +183,7 @@ graph LR
     Fix --> Review
 ```
 
-This creates **emergent quality** through iteration rather than hoping for perfection on first attempt.
+If there are issues, it generates specific feedback for the AI to address. If the code passes review, it automatically creates a pull request. This prevents bad code from getting merged while allowing continuous improvement.
 
 ## Working with Multiple AI Instances
 
