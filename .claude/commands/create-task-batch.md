@@ -12,7 +12,7 @@ Read and build a mental model from:
 - `planning/PRD.md` - what we're building and why
 - `planning/architecture.md` - how it's structured
 - `planning/api-spec.yaml` - contracts and interfaces
-- Any other planning documents
+- Any other planning documents in the `planning/` directory
 
 ## Step 2: Create Issue Plan
 
@@ -50,17 +50,38 @@ For each approved issue:
 1. Read the create-issue command at `.claude/commands/create-issue.md`
 2. Call it with:
    - `$MODE="batch"` 
-   - `$OUTPUT_DIR=".claude/artifacts/issues/"`
+   - `$OUTPUT_DIR="planning/temp/issues/"`
    - The specific context for that issue
 
-Each issue gets saved as a separate file in `.claude/artifacts/issues/`.
+Each issue gets saved as a separate file in `planning/temp/issues/`.
 
-## Step 5: Create Summary
+## Step 5: Create GitHub Issues
 
-Generate `planning/temp/batch-summary.md`:
-- List of all generated issue files
-- Command to create them on GitHub
-- Suggested work order based on dependencies
+After human approval, automatically create the issues on GitHub:
+
+1. **Execute issue creation with labels**:
+   ```bash
+   for issue_file in planning/temp/issues/*.md; do
+     title=$(head -1 "$issue_file" | sed 's/^# //')
+     
+     # Determine labels based on issue content/type
+     labels="enhancement"
+     case "$issue_file" in
+       *worktree*) labels="$labels,scripts,high-priority" ;;
+       *review*) labels="$labels,commands,high-priority" ;;
+       *setup*) labels="$labels,scripts,template" ;;
+       *test*) labels="$labels,testing,validation" ;;
+       *documentation*) labels="$labels,documentation,user-experience" ;;
+     esac
+     
+     gh issue create --title "$title" --body-file "$issue_file" --label "$labels"
+   done
+   ```
+
+2. **Generate summary report** in `planning/temp/batch-summary.md`:
+   - List of created GitHub issue numbers and URLs
+   - Suggested work order based on dependencies
+   - Next steps for implementation
 
 ## Important Notes
 

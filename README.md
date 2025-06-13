@@ -18,9 +18,26 @@ You're not just using AI to write code - you're **conducting a symphony** of spe
 ## Requirements
 
 - **Claude Code** (`npm install -g @anthropic-ai/claude-code`)
-- **GitHub CLI** (`brew install gh`)
+- **GitHub CLI** (`brew install gh`) with **project scope**
 - **tmux** (recommended for parallel sessions)
-- **Git** with worktree support
+- **Git** with worktree support (Git 2.5+)
+
+### Authentication Setup
+
+**GitHub CLI requires special permissions** for project management:
+
+```bash
+# Initial authentication with project scope
+gh auth login --scopes "project"
+
+# Or refresh existing auth to add project scope
+gh auth refresh -s project
+
+# Verify you have the required permissions
+gh auth status
+```
+
+⚠️ **Important**: The default `gh auth login` does **NOT** include the `project` scope needed for GitHub Projects automation. You must explicitly add it.
 
 ## Getting Started
 
@@ -28,10 +45,15 @@ You're not just using AI to write code - you're **conducting a symphony** of spe
 
 1. Click **"Use this template"** button above
 2. Name your new repository
-3. Clone and initialize:
+3. Clone and set up authentication:
    ```bash
    git clone https://github.com/YOU/your-new-repo
    cd your-new-repo
+   
+   # Authenticate with GitHub CLI (with project scope)
+   gh auth login --scopes "project"
+   
+   # Run setup script
    ./scripts/setup.sh
    ```
 
@@ -69,7 +91,7 @@ Claude Swarm provides specialized commands for each phase of development:
 |---------|---------|-------|
 | `/project:create-plans` | Collaborative planning with AI | `create-plans $IDEA="build a task manager"` |
 | `/project:create-task` | Create a single GitHub issue | `create-task $DESCRIPTION="add auth"` |
-| `/project:create-task-batch` | Decompose plans into tasks | `create-task-batch planning/` |
+| `/project:create-task-batch` | Decompose plans into tasks | `create-task-batch` |
 | `/project:work-on-task` | Implement a specific task | `work-on-task $ISSUE_NUMBER=123` |
 
 ### Workflow Example
@@ -79,7 +101,7 @@ Claude Swarm provides specialized commands for each phase of development:
 claude /project:create-plans $IDEA="SaaS metrics dashboard"
 
 # 2. Decompose into tasks  
-claude /project:create-task-batch planning/
+claude /project:create-task-batch
 
 # 3. Start building in parallel
 ./scripts/worktree-task.sh feature-auth
@@ -172,7 +194,7 @@ Each agent works in **complete isolation**:
 For teams wanting visual project management:
 
 ```bash
-./scripts/setup-github-project.sh
+./scripts/setup.sh
 
 # Creates a board with columns:
 # PLANNING → READY → BUILDING → REVIEW → SHIPPED
