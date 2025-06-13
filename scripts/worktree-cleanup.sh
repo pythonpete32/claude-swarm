@@ -78,7 +78,7 @@ case "$1" in
         
         # Get all worktrees except the main one
         git worktree list --porcelain | grep "^worktree" | cut -d' ' -f2- | while read -r worktree_path; do
-            if [[ ! "$worktree_path" =~ ^/.*claude-swarm$ ]]; then
+            if [[ ! "$worktree_path" =~ $(git rev-parse --show-toplevel)$ ]]; then
                 # Extract branch name from path
                 branch_name=$(basename "$worktree_path" | sed "s/^$(basename "$(git rev-parse --show-toplevel)")-//")
                 cleanup_worktree "$branch_name"
