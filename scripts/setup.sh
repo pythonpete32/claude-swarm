@@ -43,7 +43,23 @@ echo "✅ All dependencies check out"
 REPO_OWNER=$(gh repo view --json owner --jq '.owner.login')
 REPO_NAME=$(gh repo view --json name --jq '.name')
 
+# Validate repository name for project creation
+if [[ ! "$REPO_NAME" =~ ^[a-zA-Z0-9._-]+$ ]]; then
+    echo "❌ Error: Repository name '$REPO_NAME' contains invalid characters for project creation"
+    echo "   GitHub project names must contain only alphanumeric characters, dots, hyphens, and underscores"
+    exit 1
+fi
+
 echo "📁 Repository: ${REPO_OWNER}/${REPO_NAME}"
+
+# Check if this appears to be a forked repository
+REPO_INFO=$(gh repo view --json isFork,parent)
+IS_FORK=$(echo "$REPO_INFO" | jq -r '.isFork')
+if [ "$IS_FORK" = "true" ]; then
+    PARENT_REPO=$(echo "$REPO_INFO" | jq -r '.parent.nameWithOwner')
+    echo "🍴 This appears to be a fork of: $PARENT_REPO"
+    echo "✅ Setup will use your repository name ($REPO_NAME) for project creation"
+fi
 
 # Check if project already exists
 echo "🔍 Checking for existing project..."

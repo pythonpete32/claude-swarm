@@ -57,7 +57,7 @@ gh auth status
 
 ## Getting Started
 
-[![Use this template](https://img.shields.io/badge/Use%20this%20template-2ea44f?style=for-the-badge)](https://github.com/org/claude-swarm/generate)
+[![Use this template](https://img.shields.io/badge/Use%20this%20template-2ea44f?style=for-the-badge)](https://github.com/pythonpete32/claude-swarm/generate)
 
 1. Click **"Use this template"** button above
 2. Name your new repository
