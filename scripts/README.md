@@ -80,8 +80,8 @@ When you run `worktree-task.sh feature-auth`, it creates:
 
 ```
 /parent-directory/
-├── claude-swarm/           # Main repository
-└── claude-swarm-feature-auth/  # Worktree (sibling directory)
+├── your-repo-name/           # Main repository
+└── your-repo-name-feature-auth/  # Worktree (sibling directory)
 ```
 
 This keeps worktrees separate from the main repository while maintaining easy access.
