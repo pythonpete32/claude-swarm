@@ -94,7 +94,7 @@ if [ "$SESSION_EXISTS" = false ]; then
     # Create session in detached mode
     tmux new-session -d -s "$SESSION_NAME" -c "$WORKTREE_ABS_PATH" \; \
          send-keys "# Ready to work on $BRANCH_NAME" C-m \; \
-         send-keys "# Run: claude /project:work-on-task \$ISSUE_NUMBER=XXX" C-m
+         send-keys "claude --dangerously-skip-permissions" C-m
     
     echo "✅ Tmux session created successfully"
 fi

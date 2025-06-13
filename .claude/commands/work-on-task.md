@@ -54,7 +54,7 @@ Based on the issue description:
   - **Validation instructions**: "To verify this works: [specific steps]"
 
 **If MODE="review"**:
-- Create `planning/temp/implementation-$ISSUE_NUMBER.md`
+- Create `planning/temp/work-report/$ISSUE_NUMBER.md`
 - Document what was implemented
 - List any decisions made
 - **Include validation instructions**: "To verify this works: [specific steps]"
