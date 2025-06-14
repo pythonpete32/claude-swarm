@@ -157,10 +157,10 @@ async function generateReviewPrompt(options: ReviewPromptOptions): Promise<strin
 interface ReviewPromptOptions {
   issueNumber: number;             // Original issue number being reviewed
   repositoryInfo: RepositoryInfo;  // Repository context
-  branchInfo: GitBranchInfo;       // Branch being reviewed
+  workBranch: string;              // Branch being reviewed
   workTreePath: string;            // Review worktree path
+  baseBranch: string;              // Base branch (usually main)
   trackingIssueNumber?: number;    // Review tracking issue number
-  diffSummary?: GitDiffStats;      // Summary of changes being reviewed
 }
 ```
 
@@ -190,8 +190,8 @@ Use the /project:review-issue command with the following process:
    - Extract original requirements and acceptance criteria
 
 2. **Review Implementation**
-   - Check work report: `cat planning/temp/work-report/123.md`
-   - Review code changes: `git diff main..feature-auth`
+   - Look for work reports in planning/temp/work-reports/ directory
+   - Analyze changes: `git diff main..feature-auth`
    - Validate implementation completeness
 
 3. **Run Validation**

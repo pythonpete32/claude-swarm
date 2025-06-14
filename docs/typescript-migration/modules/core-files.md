@@ -18,31 +18,17 @@ Provides file system operations supporting context management, feedback extracti
 
 #### ensureClaudeContext
 ```typescript
-async function ensureClaudeContext(targetPath: string, sourcePath?: string): Promise<ClaudeContextStatus>
+async function ensureClaudeContext(targetPath: string, sourcePath: string): Promise<void>
 ```
 
 **Parameters:**
 - `targetPath: string` - Directory to ensure context files exist
-- `sourcePath?: string` - Source directory to copy from (default: current repository)
-
-**Returns:**
-```typescript
-interface ClaudeContextStatus {
-  claudeMdExists: boolean;         // Whether CLAUDE.md is present
-  claudeDirExists: boolean;        // Whether .claude/ directory exists
-  settingsExists: boolean;         // Whether .claude/settings.local.json exists
-  commandsAvailable: string[];     // Available command files
-  isComplete: boolean;             // All required context is available
-  copiedFiles: string[];           // Files that were copied
-}
-```
+- `sourcePath: string` - Source directory to copy from
 
 **Behavior:**
-- Checks for CLAUDE.md in target directory
-- Checks for .claude/ directory and contents
-- Copies missing files from source if provided
-- Validates context completeness for Claude operations
-- Creates minimal context if source unavailable
+- Copies CLAUDE.md from source if missing in target
+- Copies .claude/ directory from source if missing in target
+- Simple file copy operation - no complex status tracking
 
 **Error Conditions:**
 - `FileError('TARGET_NOT_FOUND')` - Target directory doesn't exist
