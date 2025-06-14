@@ -1,406 +1,167 @@
 # Workflow: Setup Project
 
-← [Back to Index](../README.md) | [Previous: Review Task](./review-task.md) | [Next: Cleanup Review →](./cleanup-review.md)
+← [Back to Index](../README.md) | [Previous: Review Task](./review-task.md) | [Next: Cleanup Worktree →](./cleanup-worktree.md)
 
 ## Purpose
-Installs claude-swarm TypeScript workflows into an existing TypeScript project, configuring package.json scripts, directory structure, and Claude Code integration. Creates the foundation for AI-assisted development workflows.
+Sets up the GitHub infrastructure backbone for claude-swarm development workflows. Orchestrates core modules to create GitHub projects, manage labels, validate authentication, and establish the foundation for all other workflows.
 
 ## Dependencies
-- `core/github.ts` - Repository detection and project integration
-- `core/git.ts` - Repository validation and configuration
-- `core/files.ts` - Directory creation and file management
-- `shared/config.ts` - Configuration management
-- Node.js `fs/promises` - File system operations
-- Node.js `path` - Path manipulation
+- `core/github.ts` - GitHub API operations via Octokit
+- `core/git.ts` - Git repository operations
+- `core/files.ts` - File operations
 
 ## Function Signatures
 
-### Project Detection and Validation
+### Setup Orchestration
 
-#### detectProjectType
+#### runSetupWorkflow
 ```typescript
-async function detectProjectType(projectPath: string): Promise<ProjectTypeInfo>
-```
-
-**Parameters:**
-- `projectPath: string` - Path to target project directory
-
-**Returns:**
-```typescript
-interface ProjectTypeInfo {
-  isTypeScript: boolean;           // Has TypeScript configuration
-  packageManager: 'npm' | 'yarn' | 'pnpm' | 'bun'; // Detected package manager
-  hasPackageJson: boolean;         // Has package.json file
-  hasGitRepo: boolean;             // Is git repository
-  hasClaudeSetup: boolean;         // Already has .claude/ directory
-  projectName: string;             // Project name from package.json
-  compatibilityLevel: 'full' | 'partial' | 'none'; // Setup compatibility
-}
-```
-
-**Behavior:**
-- Scans project directory for TypeScript configuration files
-- Detects package manager from lockfiles and configuration
-- Validates git repository presence and status
-- Checks for existing Claude Code setup
-- Determines compatibility for claude-swarm installation
-
-**Error Conditions:**
-- `FileError('PROJECT_NOT_FOUND')` - Target directory doesn't exist
-- `FileError('INVALID_PROJECT')` - Not a valid TypeScript project
-- `GitError('NOT_GIT_REPO')` - Directory is not a git repository
-
----
-
-#### validateProjectSetup
-```typescript
-async function validateProjectSetup(projectInfo: ProjectTypeInfo): Promise<SetupValidation>
-```
-
-**Parameters:**
-- `projectInfo: ProjectTypeInfo` - Project detection results
-
-**Returns:**
-```typescript
-interface SetupValidation {
-  canInstall: boolean;             // Whether installation can proceed
-  requirements: SetupRequirement[]; // Missing requirements
-  warnings: SetupWarning[];       // Non-blocking issues
-  recommendedActions: string[];    // Suggested pre-setup steps
-}
-
-interface SetupRequirement {
-  type: 'typescript' | 'git' | 'packagejson' | 'permissions';
-  description: string;             // Human-readable requirement
-  fixCommand?: string;             // Command to resolve requirement
-  critical: boolean;               // Blocks installation if missing
-}
-
-interface SetupWarning {
-  type: 'existing_setup' | 'git_dirty' | 'deps_outdated';
-  message: string;                 // Warning description
-  canContinue: boolean;            // Whether setup can continue
-  recommendation?: string;         // How to resolve warning
-}
-```
-
-**Behavior:**
-- Validates all prerequisites for claude-swarm installation
-- Identifies blocking requirements vs. warnings
-- Provides actionable fix commands for requirements
-- Checks for conflicts with existing setup
-
-**Error Conditions:**
-- `ValidationError('REQUIREMENTS_NOT_MET')` - Critical requirements missing
-- `ValidationError('EXISTING_SETUP_CONFLICT')` - Conflicting configuration exists
-
----
-
-### Installation and Configuration
-
-#### installClaudeSwarm
-```typescript
-async function installClaudeSwarm(options: InstallOptions): Promise<InstallResult>
+async function runSetupWorkflow(options?: SetupWorkflowOptions): Promise<SetupWorkflowResult>
 ```
 
 **Parameters:**
 ```typescript
-interface InstallOptions {
-  projectPath: string;             // Target project directory
-  packageManager: 'npm' | 'yarn' | 'pnpm' | 'bun'; // Package manager to use
-  includeWorkflows: string[];      // Workflows to install ('work-on-task', 'review-task', etc.)
-  overwriteExisting: boolean;      // Replace existing files
-  skipDependencies: boolean;       // Skip npm package installation
-  gitignoreEntries?: string[];     // Additional .gitignore entries
+interface SetupWorkflowOptions {
+  skipAuthentication?: boolean;    // Skip GitHub authentication check
+  skipProjectCreation?: boolean;   // Skip project creation/linking  
+  skipLabelCreation?: boolean;     // Skip label creation
+  dryRun?: boolean;                // Show what would be done
 }
 ```
 
 **Returns:**
 ```typescript
-interface InstallResult {
-  success: boolean;                // Installation succeeded
-  filesCreated: string[];          // Paths of created files
-  scriptsAdded: string[];          // Package.json scripts added
-  dependenciesInstalled: string[]; // NPM packages installed
-  configurationPath: string;       // Path to configuration file
+interface SetupWorkflowResult {
+  success: boolean;                // Overall setup success
+  repositoryInfo: RepositoryInfo;  // Repository information from detectRepository
+  projectInfo: GitHubProject;      // Created/found project information
+  labelsCreated: GitHubLabel[];    // Labels that were created
+  authenticationValid: boolean;    // GitHub authentication status
+  projectURL: string;              // GitHub project URL
   nextSteps: string[];             // Recommended next actions
-  errors: InstallError[];          // Any non-fatal errors
-}
-
-interface InstallError {
-  file: string;                    // Affected file path
-  error: string;                   // Error description
-  fatal: boolean;                  // Whether error blocks usage
 }
 ```
 
 **Behavior:**
-- Creates `.claude/workflows/` directory structure
-- Installs TypeScript workflow files
-- Updates package.json with workflow scripts
-- Installs required npm dependencies
-- Creates initial configuration files
-- Updates .gitignore with appropriate entries
+- Validates GitHub authentication using validateAuthentication
+- Detects repository information using detectRepository  
+- Creates or finds GitHub project using findOrCreateProject
+- Creates standard claude-swarm labels using createLabels
+- Links project to repository using linkProjectToRepository
+- Provides setup completion status and next steps
 
 **Error Conditions:**
-- `FileError('PERMISSION_DENIED')` - No write access to project
-- `FileError('DISK_FULL')` - Insufficient disk space
-- `PackageError('INSTALL_FAILED')` - NPM installation failed
-- `GitError('GITIGNORE_UPDATE_FAILED')` - Cannot update .gitignore
+- `GitHubError('AUTHENTICATION_FAILED')` - GitHub authentication invalid
+- `GitError('NOT_GIT_REPOSITORY')` - Not running from git repository
+- `GitHubError('PROJECT_CREATE_FAILED')` - Cannot create GitHub project
+- `GitHubError('LABEL_CREATE_FAILED')` - Cannot create repository labels
 
 ---
 
-#### setupPackageScripts
-```typescript
-async function setupPackageScripts(options: ScriptSetupOptions): Promise<ScriptSetupResult>
-```
+### Validation Functions
 
-**Parameters:**
+#### validateSetupEnvironment
 ```typescript
-interface ScriptSetupOptions {
-  packageJsonPath: string;         // Path to package.json
-  workflows: string[];             // Workflow names to create scripts for
-  scriptPrefix: string;            // Prefix for script names (default: 'claude:')
-  overwriteExisting: boolean;      // Replace existing scripts
-}
+async function validateSetupEnvironment(): Promise<SetupEnvironmentValidation>
 ```
 
 **Returns:**
 ```typescript
-interface ScriptSetupResult {
-  scriptsAdded: ScriptEntry[];     // Scripts successfully added
-  scriptsSkipped: ScriptEntry[];   // Scripts that already existed
-  packageJsonBackup: string;       // Path to backup file
-  totalScripts: number;            // Total scripts now in package.json
+interface SetupEnvironmentValidation {
+  isValid: boolean;                // All requirements met
+  gitRepository: boolean;          // Is git repository
+  githubAuthentication: boolean;   // GitHub authentication valid
+  repositoryDetectable: boolean;   // Repository info can be detected
+  requiredScopes: string[];        // Required GitHub token scopes
+  issues: ValidationIssue[];       // Any validation problems
 }
 
-interface ScriptEntry {
-  name: string;                    // Script name (e.g., 'claude:work-on-task')
-  command: string;                 // Script command
-  description: string;             // Human-readable description
+interface ValidationIssue {
+  component: string;               // What failed validation
+  issue: string;                   // Description of the issue
+  resolution: string;              // How to fix the issue
 }
 ```
 
 **Behavior:**
-- Reads and parses existing package.json
-- Creates backup of original package.json
-- Adds claude-swarm workflow scripts with consistent naming
-- Preserves existing scripts unless overwrite specified
-- Validates script commands for correctness
+- Validates git repository using getRepositoryRoot
+- Checks GitHub authentication using validateAuthentication
+- Verifies repository can be detected using detectRepository
+- Provides specific guidance for fixing validation issues
 
 **Error Conditions:**
-- `FileError('PACKAGEJSON_NOT_FOUND')` - package.json missing
-- `FileError('PACKAGEJSON_INVALID')` - Malformed package.json
-- `FileError('BACKUP_FAILED')` - Cannot create backup file
+- `GitError('NOT_GIT_REPOSITORY')` - Not running from git repository
+- `GitHubError('AUTHENTICATION_FAILED')` - GitHub authentication problems
 
 ---
 
-### Directory Structure Creation
+### Project Management Functions  
 
-#### createWorkflowStructure
+#### ensureProjectExists
 ```typescript
-async function createWorkflowStructure(projectPath: string, options: StructureOptions): Promise<StructureResult>
+async function ensureProjectExists(repositoryInfo: RepositoryInfo): Promise<GitHubProject>
 ```
 
 **Parameters:**
-```typescript
-interface StructureOptions {
-  workflowsToInclude: string[];    // Specific workflows to install
-  createTempDirectories: boolean;   // Create planning/temp/ structure
-  setupGitignore: boolean;         // Update .gitignore automatically
-  preserveExisting: boolean;       // Don't overwrite existing files
-}
-```
-
-**Returns:**
-```typescript
-interface StructureResult {
-  directoriesCreated: string[];    // Paths of created directories
-  filesCreated: string[];          // Paths of created files
-  gitignoreUpdated: boolean;       // Whether .gitignore was modified
-  structureComplete: boolean;      // All required structure created
-  permissions: DirectoryPermissions; // Directory permission status
-}
-
-interface DirectoryPermissions {
-  readable: boolean;               // Directories are readable
-  writable: boolean;               // Directories are writable
-  executable: boolean;             // Directories are executable
-  issues: string[];                // Any permission issues found
-}
-```
+- `repositoryInfo: RepositoryInfo` - Repository information from detectRepository
 
 **Behavior:**
-- Creates `.claude/workflows/` directory
-- Installs workflow TypeScript files
-- Creates `planning/temp/` directory structure
-- Sets appropriate directory permissions
-- Creates initial configuration files
-
-**Expected Directory Structure:**
-```
-project-root/
-├── .claude/
-│   ├── workflows/
-│   │   ├── work-on-task.ts
-│   │   ├── review-task.ts
-│   │   ├── setup-project.ts
-│   │   └── cleanup-review.ts
-│   └── settings.local.json
-├── planning/
-│   └── temp/
-│       ├── work-reports/
-│       └── feedback/
-└── package.json (updated)
-```
+- Uses findOrCreateProject from core/github to get project
+- Creates project with repository name if none exists
+- Returns project information for further operations
 
 **Error Conditions:**
-- `FileError('DIRECTORY_CREATE_FAILED')` - Cannot create required directories
-- `FileError('PERMISSION_DENIED')` - Insufficient permissions
-- `GitError('GITIGNORE_INVALID')` - Cannot parse .gitignore file
+- `GitHubError('PROJECT_CREATE_FAILED')` - Cannot create GitHub project
+- `GitHubError('INVALID_REPOSITORY')` - Repository information invalid
 
 ---
 
-### Configuration Management
-
-#### createConfiguration
+#### setupStandardLabels
 ```typescript
-async function createConfiguration(options: ConfigurationOptions): Promise<ConfigurationResult>
+async function setupStandardLabels(repositoryInfo: RepositoryInfo): Promise<GitHubLabel[]>
 ```
 
 **Parameters:**
-```typescript
-interface ConfigurationOptions {
-  projectPath: string;             // Target project path
-  githubIntegration: boolean;      // Enable GitHub features
-  defaultModel?: string;           // Default Claude model
-  workflowDefaults: WorkflowDefaults; // Default workflow settings
-  customCommands?: string[];       // Additional Claude commands to install
-}
+- `repositoryInfo: RepositoryInfo` - Repository information
 
-interface WorkflowDefaults {
-  worktreeBasePath: string;        // Base path for worktrees (default: '../')
-  defaultBranch: string;           // Default base branch (default: 'main')
-  agentNaming: 'simple' | 'timestamped'; // Worktree naming strategy
-  cleanupPolicy: 'manual' | 'automatic'; // Cleanup behavior
-}
-```
-
-**Returns:**
-```typescript
-interface ConfigurationResult {
-  configPath: string;              // Path to created config file
-  settingsCreated: boolean;        // Settings file created successfully
-  commandsInstalled: string[];     // Claude commands installed
-  integrationStatus: IntegrationStatus; // External integration status
-}
-
-interface IntegrationStatus {
-  github: boolean;                 // GitHub CLI available and authenticated
-  tmux: boolean;                   // tmux available
-  claude: boolean;                 // Claude CLI available
-  missingDependencies: string[];   // Commands/tools not found
-}
-```
+**Returns:** Array of created/existing labels
 
 **Behavior:**
-- Creates initial claude-swarm configuration
-- Validates external tool availability
-- Sets up GitHub integration if requested
-- Creates Claude command files
-- Establishes default workflow settings
+- Uses createLabels from core/github with standard claude-swarm label set
+- Creates labels: scripts, commands, testing, validation, user-experience, template, high-priority
+- Skips labels that already exist
+- Returns information about all processed labels
+
+**Standard Label Set:**
+- scripts (green) - Scripts and automation tools
+- commands (blue) - Claude command development  
+- testing (yellow) - Testing and validation
+- validation (pink) - Validation and verification
+- user-experience (light green) - User experience improvements
+- template (purple) - Template and boilerplate code
+- high-priority (red) - High priority tasks
 
 **Error Conditions:**
-- `ConfigError('INVALID_SETTINGS')` - Configuration values invalid
-- `ConfigError('DEPENDENCY_MISSING')` - Required external tool missing
-- `FileError('CONFIG_WRITE_FAILED')` - Cannot write configuration file
+- `GitHubError('LABEL_CREATE_FAILED')` - Cannot create repository labels
 
 ---
 
-### Post-Installation Setup
-
-#### verifyInstallation
+#### linkProjectToRepo
 ```typescript
-async function verifyInstallation(projectPath: string): Promise<VerificationResult>
+async function linkProjectToRepo(projectInfo: GitHubProject, repositoryInfo: RepositoryInfo): Promise<void>
 ```
 
 **Parameters:**
-- `projectPath: string` - Path to installed project
-
-**Returns:**
-```typescript
-interface VerificationResult {
-  installationValid: boolean;      // Installation appears correct
-  workflowsAccessible: string[];   // Workflows that can be executed
-  dependenciesResolved: boolean;   // All dependencies installed
-  configurationValid: boolean;     // Configuration file is valid
-  issues: VerificationIssue[];     // Any problems found
-  recommendedNextSteps: string[];  // What user should do next
-}
-
-interface VerificationIssue {
-  severity: 'error' | 'warning' | 'info';
-  component: string;               // Affected component
-  description: string;             // Issue description
-  resolution?: string;             // How to fix the issue
-}
-```
+- `projectInfo: GitHubProject` - Project to link
+- `repositoryInfo: RepositoryInfo` - Repository to link to
 
 **Behavior:**
-- Tests that workflows can be executed
-- Validates configuration file syntax
-- Checks npm dependencies are installed
-- Verifies external tool availability
-- Provides guidance for any issues found
+- Uses linkProjectToRepository from core/github
+- Makes project visible in repository interface
+- Enables project functionality for repository issues
 
 **Error Conditions:**
-- `VerificationError('INSTALLATION_CORRUPT')` - Installation appears broken
-- `VerificationError('DEPENDENCIES_MISSING')` - Required packages not installed
-
----
-
-#### generateSetupReport
-```typescript
-async function generateSetupReport(installResult: InstallResult, verificationResult: VerificationResult): Promise<string>
-```
-
-**Parameters:**
-- `installResult: InstallResult` - Results from installation process
-- `verificationResult: VerificationResult` - Results from verification
-
-**Returns:** Formatted setup report as markdown string
-
-**Behavior:**
-- Creates comprehensive installation summary
-- Lists all files and scripts created
-- Provides usage instructions for workflows
-- Includes troubleshooting information
-- Documents next steps for getting started
-
-**Report Template:**
-```markdown
-# Claude Swarm Setup Complete
-
-## Installation Summary
-- ✅ Workflows installed: work-on-task, review-task
-- ✅ Package scripts added: claude:work-on-task, claude:review-task
-- ✅ Dependencies installed: 5 packages
-- ✅ Configuration created: .claude/settings.local.json
-
-## Getting Started
-1. Start working on an issue: `npm run claude:work-on-task 123`
-2. Review completed work: `npm run claude:review-task 123`
-3. Check configuration: `.claude/settings.local.json`
-
-## Troubleshooting
-- GitHub integration: Run `gh auth login` if needed
-- tmux sessions: Use `tmux list-sessions` to see active work
-```
-
-**Error Conditions:**
-- `ReportError('GENERATION_FAILED')` - Cannot generate report
-
----
+- `GitHubError('PROJECT_LINK_FAILED')` - Cannot link project to repository
 
 ## Workflow Integration
 
@@ -414,56 +175,53 @@ async function main(args: string[]): Promise<void>
 
 **Usage Examples:**
 ```bash
-# Basic setup
+# Complete GitHub infrastructure setup
 bun .claude/workflows/setup-project.ts
 
-# Setup with specific workflows
-bun .claude/workflows/setup-project.ts --workflows work-on-task,review-task
+# Dry run to see what would be done
+bun .claude/workflows/setup-project.ts --dry-run
 
-# Setup with GitHub integration
-bun .claude/workflows/setup-project.ts --github
+# Skip environment validation
+bun .claude/workflows/setup-project.ts --skip-environment-check
 
-# Force overwrite existing setup
-bun .claude/workflows/setup-project.ts --force
+# Interactive mode with confirmations
+bun .claude/workflows/setup-project.ts --interactive
 ```
 
 **Command Line Options:**
 ```typescript
 interface SetupProjectOptions {
-  workflows?: string[];            // Workflows to install
-  packageManager?: 'npm' | 'yarn' | 'pnpm' | 'bun';
-  github?: boolean;                // Enable GitHub integration
-  force?: boolean;                 // Overwrite existing files
-  interactive?: boolean;           // Prompt for configuration
+  skipEnvironmentCheck?: boolean;  // Skip environment validation
+  skipProjectCreation?: boolean;   // Skip project creation/linking
+  skipLabelCreation?: boolean;     // Skip label creation
+  interactive?: boolean;           // Prompt for confirmations
   dryRun?: boolean;                // Show what would be done
 }
 ```
 
-### Integration with Package Managers
+### Setup Process Overview
 
-**NPM Integration:**
-```bash
-# After setup, these commands become available:
-npm run claude:work-on-task 123
-npm run claude:review-task 123
-npm run claude:setup-project
-npm run claude:cleanup-review
-```
+**What this workflow actually does:**
+1. **Environment Validation**
+   - Validates git repository
+   - Checks GitHub CLI installation and authentication
+   - Verifies required tools (jq)
+   - Ensures proper GitHub scopes
 
-**Configuration in package.json:**
-```json
-{
-  "scripts": {
-    "claude:work-on-task": "bun .claude/workflows/work-on-task.ts",
-    "claude:review-task": "bun .claude/workflows/review-task.ts",
-    "claude:setup-project": "bun .claude/workflows/setup-project.ts",
-    "claude:cleanup-review": "bun .claude/workflows/cleanup-review.ts"
-  },
-  "devDependencies": {
-    "claude-swarm": "^1.0.0"
-  }
-}
-```
+2. **GitHub Project Setup**
+   - Creates GitHub project with repository name
+   - Links project to repository
+   - Verifies project linking works
+
+3. **Label Management**
+   - Creates standard claude-swarm labels
+   - Handles existing labels gracefully
+   - Sets up issue organization system
+
+4. **Verification and Reporting**
+   - Verifies complete setup
+   - Generates setup report
+   - Provides next steps guidance
 
 ## Error Handling
 

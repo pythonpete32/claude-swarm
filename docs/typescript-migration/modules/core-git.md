@@ -95,6 +95,7 @@ interface GitBranchInfo {
   isClean: boolean;                // Whether working directory is clean
   hasUncommittedChanges: boolean;  // Whether there are uncommitted changes
   hasStagedChanges: boolean;       // Whether there are staged changes
+  sourceBranch?: string;           // Branch this was created from
 }
 
 interface GitUpstreamInfo {

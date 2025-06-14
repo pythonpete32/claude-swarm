@@ -195,6 +195,129 @@ const reviewWorktrees = await findWorktrees('review-issue-*');
 await removeWorktree(reviewWorktrees[0].path, { force: false });
 ```
 
+---
+
+### Cleanup Operations
+
+#### cleanupCurrentWorktree
+```typescript
+async function cleanupCurrentWorktree(options?: CurrentWorktreeCleanupOptions): Promise<CleanupResult>
+```
+
+**Parameters:**
+```typescript
+interface CurrentWorktreeCleanupOptions {
+  preserveFeedback?: boolean;      // Keep feedback documents before cleanup
+  preserveWorkReport?: boolean;    // Keep work reports before cleanup  
+  confirmRemoval?: boolean;        // Prompt before removing worktree
+  sessionName?: string;            // tmux session to terminate
+}
+```
+
+**Returns:**
+```typescript
+interface CleanupResult {
+  success: boolean;                // Cleanup completed successfully
+  worktreeRemoved: boolean;        // Worktree was deleted
+  sessionTerminated: boolean;      // tmux session was killed
+  filesPreserved: string[];        // Files saved before cleanup
+  tempFilesRemoved: number;        // Temporary files deleted
+  spaceSaved: number;              // Disk space freed (bytes)
+  errors: string[];                // Any cleanup failures
+}
+```
+
+**Behavior:**
+- Detects current worktree path automatically
+- Preserves specified documents to permanent locations
+- Removes worktree and cleans up references
+- Safe to call from within the worktree being cleaned
+
+**Error Conditions:**
+- `WorktreeError('NOT_IN_WORKTREE')` - Not currently in a worktree
+- `WorktreeError('REMOVAL_FAILED')` - Cannot remove current worktree
+
+---
+
+#### findAbandonedWorktrees
+```typescript
+async function findAbandonedWorktrees(options?: AbandonedWorktreeOptions): Promise<AbandonedWorktree[]>
+```
+
+**Parameters:**
+```typescript
+interface AbandonedWorktreeOptions {
+  basePath?: string;               // Base path to search (default: '../')
+  maxAge?: number;                 // Consider abandoned after N days
+  includeActive?: boolean;         // Include worktrees with active sessions
+  pattern?: string;                // Worktree name pattern to match
+}
+
+interface AbandonedWorktree {
+  path: string;                    // Worktree directory path
+  branch: string;                  // Associated branch name
+  age: number;                     // Days since creation
+  lastActivity: Date;              // Last file modification
+  hasUncommittedChanges: boolean;  // Dirty working directory
+  hasUnpushedCommits: boolean;     // Unpushed commits exist
+  safeToRemove: boolean;           // No valuable data will be lost
+  removalRisk: 'low' | 'medium' | 'high'; // Risk assessment
+}
+```
+
+**Behavior:**
+- Scans for worktrees matching claude-swarm patterns
+- Analyzes activity and age to determine abandonment
+- Checks for uncommitted/unpushed work
+- Assesses data loss risk for each worktree
+
+**Error Conditions:**
+- `FileError('SCAN_FAILED')` - Cannot scan directories
+- `WorktreeError('LIST_FAILED')` - Git worktree listing failed
+
+---
+
+#### cleanupAbandonedWorktrees
+```typescript
+async function cleanupAbandonedWorktrees(worktrees: AbandonedWorktree[], options?: BatchCleanupOptions): Promise<BatchCleanupResult>
+```
+
+**Parameters:**
+```typescript
+interface BatchCleanupOptions {
+  confirmEach?: boolean;           // Prompt for each worktree
+  preserveRisky?: boolean;         // Skip high-risk removals
+  maxConcurrent?: number;          // Maximum parallel operations
+  dryRun?: boolean;                // Show what would be done
+}
+
+interface BatchCleanupResult {
+  totalProcessed: number;          // Total worktrees processed
+  successfulRemovals: number;      // Worktrees successfully removed
+  skippedWorktrees: number;        // Worktrees preserved/skipped
+  totalSpaceSaved: number;         // Total disk space freed
+  errors: CleanupError[];          // Individual cleanup failures
+}
+
+interface CleanupError {
+  worktreePath: string;            // Failed worktree path
+  error: string;                   // Error description
+  recoverable: boolean;            // Whether error can be resolved
+}
+```
+
+**Behavior:**
+- Processes multiple abandoned worktrees safely
+- Applies consistent cleanup policies
+- Handles individual failures gracefully
+- Provides progress reporting for long operations
+
+**Error Conditions:**
+- `BatchError('TOO_MANY_FAILURES')` - Excessive cleanup failures
+- `ResourceError('INSUFFICIENT_RESOURCES')` - System resource constraints
+
+---
+
 ## Testing Considerations
 
 ### Unit Tests

@@ -381,40 +381,6 @@ claude -p "Analyze this codebase and suggest improvements" --output-format json 
 
 ---
 
-### Context File Management
-
-#### ensureClaudeContext
-```typescript
-async function ensureClaudeContext(targetDirectory: string, sourceDirectory?: string): Promise<ClaudeContextInfo>
-```
-
-**Parameters:**
-- `targetDirectory: string` - Directory to ensure context files exist
-- `sourceDirectory?: string` - Source directory to copy context from (default: current directory)
-
-**Returns:**
-```typescript
-interface ClaudeContextInfo {
-  claudeMdExists: boolean;         // Whether CLAUDE.md exists
-  claudeDirExists: boolean;        // Whether .claude/ directory exists
-  commandsAvailable: string[];     // Available Claude commands
-  settingsConfigured: boolean;     // Whether settings are configured
-  contextComplete: boolean;        // Whether all context is available
-}
-```
-
-**Behavior:**
-- Ensures CLAUDE.md exists in target directory
-- Ensures .claude/ directory and contents exist
-- Copies context files from source if needed
-- Validates context completeness
-
-**Error Conditions:**
-- `ClaudeError('CONTEXT_COPY_FAILED')` - Failed to copy context files
-- `ClaudeError('INVALID_CONTEXT')` - Context files are invalid or corrupted
-
----
-
 ### Configuration Management
 
 #### detectClaudeCommands

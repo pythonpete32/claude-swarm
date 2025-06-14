@@ -372,6 +372,72 @@ interface GitHubProject {
 
 ---
 
+#### createProject
+```typescript
+async function createProject(owner: string, params: CreateProjectParams): Promise<GitHubProject>
+```
+
+**Parameters:**
+```typescript
+interface CreateProjectParams {
+  title: string;                   // Project title
+  description?: string;            // Project description
+  visibility: 'public' | 'private'; // Project visibility
+  templateId?: string;             // Template to use
+}
+```
+
+**Behavior:**
+- Creates new GitHub project using GraphQL API
+- Returns complete project information including node ID and number
+- Handles both user and organization project creation
+
+**GraphQL Mutation Reference:**
+```graphql
+mutation CreateProject($ownerId: ID!, $title: String!, $description: String) {
+  createProjectV2(input: {
+    ownerId: $ownerId
+    title: $title
+    description: $description
+  }) {
+    projectV2 {
+      id
+      number
+      title
+      url
+      createdAt
+    }
+  }
+}
+```
+
+**Error Conditions:**
+- `GitHubError('PROJECT_CREATE_FAILED')` - Failed to create project
+- `GitHubError('INVALID_OWNER')` - Owner doesn't exist or no permissions
+- `GitHubError('PROJECT_EXISTS')` - Project with same title already exists
+
+---
+
+#### findOrCreateProject
+```typescript
+async function findOrCreateProject(owner: string, title: string): Promise<GitHubProject>
+```
+
+**Parameters:**
+- `owner: string` - Repository owner/organization
+- `title: string` - Project title to find or create
+
+**Behavior:**
+- Searches for existing project with matching title
+- Creates new project if none found
+- Returns project information
+
+**Error Conditions:**
+- All from `createProject()` plus:
+- `GitHubError('PROJECT_LIST_FAILED')` - Cannot list existing projects
+
+---
+
 #### detectProjectFields
 ```typescript
 async function detectProjectFields(projectId: string): Promise<ProjectFieldDetection>
