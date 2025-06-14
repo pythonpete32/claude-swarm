@@ -29,7 +29,3 @@ export function safeJsonParse<T>(json: string): T | null {
   }
 }
 
-// This will cause a TypeScript error!
-export function badFunction(param: any): any {
-  return param.doesNotExist.oops;
-}
