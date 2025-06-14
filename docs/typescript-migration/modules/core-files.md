@@ -18,22 +18,33 @@ Provides file system operations supporting context management, feedback extracti
 
 #### ensureClaudeContext
 ```typescript
-async function ensureClaudeContext(targetPath: string, sourcePath: string): Promise<void>
+async function ensureClaudeContext(targetPath: string, sourcePath?: string): Promise<ClaudeContextStatus>
 ```
 
 **Parameters:**
 - `targetPath: string` - Directory to ensure context files exist
-- `sourcePath: string` - Source directory to copy from
+- `sourcePath?: string` - Source directory to copy from (default: repository root)
+
+**Returns:**
+```typescript
+interface ClaudeContextStatus {
+  isComplete: boolean;             // Whether context is fully set up
+  claudeMdExists: boolean;         // CLAUDE.md file present
+  claudeDirExists: boolean;        // .claude/ directory present
+  copiedFiles: string[];           // Files copied during operation
+}
+```
 
 **Behavior:**
 - Copies CLAUDE.md from source if missing in target
-- Copies .claude/ directory from source if missing in target
-- Simple file copy operation - no complex status tracking
+- Copies .claude/ directory from source if missing in target  
+- Returns status information for workflow validation
+- Defaults to repository root if sourcePath not provided
 
 **Error Conditions:**
 - `FileError('TARGET_NOT_FOUND')` - Target directory doesn't exist
+- `FileError('SOURCE_NOT_FOUND')` - Source directory doesn't exist
 - `FileError('COPY_FAILED')` - Failed to copy context files
-- `FileError('PERMISSION_DENIED')` - No write access to target
 
 ---
 
@@ -313,49 +324,7 @@ async function createTempDirectory(prefix: string): Promise<string>
 
 ---
 
-### File Analysis and Validation
-
-#### analyzeChangedFiles
-```typescript
-async function analyzeChangedFiles(gitDiff: GitDiffResult): Promise<FileAnalysis>
-```
-
-**Returns:**
-```typescript
-interface FileAnalysis {
-  codeFiles: FileChangeInfo[];     // Source code changes
-  testFiles: FileChangeInfo[];     // Test file changes
-  configFiles: FileChangeInfo[];   // Configuration changes
-  documentationFiles: FileChangeInfo[]; // Documentation changes
-  summary: FileChangeSummary;      // Overall analysis
-}
-
-interface FileChangeInfo {
-  path: string;                    // File path
-  type: 'added' | 'modified' | 'deleted' | 'renamed';
-  language?: string;               // Programming language
-  complexity: 'low' | 'medium' | 'high'; // Change complexity
-  linesAdded: number;              // Lines added
-  linesDeleted: number;            // Lines removed
-  riskLevel: 'low' | 'medium' | 'high'; // Change risk assessment
-}
-
-interface FileChangeSummary {
-  totalFiles: number;              // Total files changed
-  riskProfile: 'low' | 'medium' | 'high'; // Overall risk
-  testCoverage: 'none' | 'partial' | 'complete'; // Test coverage
-  requiresDocumentation: boolean;   // Whether docs need updating
-  complexity: 'low' | 'medium' | 'high'; // Overall complexity
-}
-```
-
-**Behavior:**
-- Analyzes git diff to categorize file changes
-- Assesses change complexity and risk levels
-- Evaluates test coverage implications
-- Provides recommendations for review focus
-
----
+### File Structure Validation
 
 #### validateFileStructure
 ```typescript
@@ -370,7 +339,6 @@ interface StructureValidation {
   hasGitRepo: boolean;             // Valid git repository
   hasPackageConfig: boolean;       // package.json or similar
   issues: string[];                // Validation problems
-  recommendations: string[];       // Improvement suggestions
 }
 ```
 

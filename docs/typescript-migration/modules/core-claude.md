@@ -29,9 +29,8 @@ async function validateClaudeAvailable(): Promise<ClaudeValidation>
 **Returns:**
 ```typescript
 interface ClaudeValidation {
-  isAvailable: boolean;            // Whether Claude CLI is in PATH
+  isValid: boolean;                // Whether Claude CLI is available and working
   version?: string;                // Claude CLI version if available
-  configPath?: string;             // Path to Claude configuration directory
   issues: string[];                // Any detected problems
 }
 ```

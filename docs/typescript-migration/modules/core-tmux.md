@@ -179,9 +179,8 @@ async function validateTmuxAvailable(): Promise<TmuxValidation>
 **Returns:**
 ```typescript
 interface TmuxValidation {
-  isAvailable: boolean;
-  version: string;                 // tmux version
-  capabilities: string[];          // Supported features
+  isValid: boolean;                // Whether tmux is available and working
+  version?: string;                // tmux version if available
   issues: string[];                // Any configuration problems
 }
 ```
