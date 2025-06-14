@@ -24,11 +24,15 @@ export const ERROR_CODES = {
 
   // Git errors
   GIT_REPOSITORY_NOT_FOUND: "GIT_REPOSITORY_NOT_FOUND",
+  GIT_REPOSITORY_INVALID: "GIT_REPOSITORY_INVALID",
   GIT_BRANCH_NOT_FOUND: "GIT_BRANCH_NOT_FOUND",
+  GIT_BRANCH_EXISTS: "GIT_BRANCH_EXISTS",
   GIT_COMMAND_FAILED: "GIT_COMMAND_FAILED",
   GIT_UNCOMMITTED_CHANGES: "GIT_UNCOMMITTED_CHANGES",
   GIT_MERGE_CONFLICT: "GIT_MERGE_CONFLICT",
   GIT_REMOTE_ERROR: "GIT_REMOTE_ERROR",
+  GIT_INVALID_REMOTE: "GIT_INVALID_REMOTE",
+  GIT_WORKING_TREE_DIRTY: "GIT_WORKING_TREE_DIRTY",
 
   // GitHub errors
   GITHUB_AUTH_FAILED: "GITHUB_AUTH_FAILED",
@@ -156,10 +160,17 @@ export class GitError extends SwarmError {
     switch (this.code) {
       case ERROR_CODES.GIT_REPOSITORY_NOT_FOUND:
         return "Ensure you're in a git repository or initialize one with 'git init'";
+      case ERROR_CODES.GIT_REPOSITORY_INVALID:
+        return "Check that the directory contains a valid git repository";
       case ERROR_CODES.GIT_BRANCH_NOT_FOUND:
         return "Check the branch name or create it with 'git checkout -b <branch>'";
+      case ERROR_CODES.GIT_BRANCH_EXISTS:
+        return "Use a different branch name or switch to the existing branch";
       case ERROR_CODES.GIT_UNCOMMITTED_CHANGES:
+      case ERROR_CODES.GIT_WORKING_TREE_DIRTY:
         return "Commit changes with 'git commit' or stash them with 'git stash'";
+      case ERROR_CODES.GIT_INVALID_REMOTE:
+        return "Check the remote URL format and ensure it's a valid Git remote";
       default:
         return null;
     }
