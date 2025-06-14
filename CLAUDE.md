@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 1. For maximum efficiency, ALWAYS use parallel tool calls wherever possible.
 2. always THINK between tool calls, dont cheap out on the reasoning budget.
-3. Noone likes a yes man! if the user is asking you to do something that dosnt make sense or can be done better, give them the best alternatives
+3. No one likes a yes man! if the user is asking you to do something that doesn't make sense or can be done better, give them the best alternatives
 
 
 ## Git Workflow
