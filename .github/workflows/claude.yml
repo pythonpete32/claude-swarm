@@ -1,4 +1,3 @@
-# .github/workflows/claude.yml
 name: Claude PR Assistant
 
 on:
