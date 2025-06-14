@@ -1586,7 +1586,13 @@ async function checkClaudeContextStatus(
           );
           const validStats = stats.filter(Boolean);
           if (validStats.length > 0) {
-            lastSyncTime = new Date(Math.max(...validStats.map((s) => s?.mtime.getTime()).filter((time): time is number => time !== undefined)));
+            lastSyncTime = new Date(
+              Math.max(
+                ...validStats
+                  .map((s) => s?.mtime.getTime())
+                  .filter((time): time is number => time !== undefined),
+              ),
+            );
           }
         }
       } catch {
