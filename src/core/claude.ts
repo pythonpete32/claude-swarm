@@ -290,25 +290,21 @@ class DefaultProcessOperations implements ProcessOperationsInterface {
   }
 
   async exec(command: string, options: any = {}): Promise<{ stdout: string; stderr: string }> {
-    try {
-      const result = await execAsync(command, {
-        timeout: options.timeout || 10000,
-        ...options,
-      });
-      return {
-        stdout: result.stdout.toString(),
-        stderr: result.stderr.toString(),
-      };
-    } catch (error) {
-      throw error;
-    }
+    const result = await execAsync(command, {
+      timeout: options.timeout || 10000,
+      ...options,
+    });
+    return {
+      stdout: result.stdout.toString(),
+      stderr: result.stderr.toString(),
+    };
   }
 
   async kill(pid: number, signal = "SIGTERM"): Promise<boolean> {
     try {
       process.kill(pid, signal);
       return true;
-    } catch (error) {
+    } catch (_error) {
       return false;
     }
   }
@@ -333,7 +329,7 @@ class DefaultProcessOperations implements ProcessOperationsInterface {
       }
 
       return processes;
-    } catch (error) {
+    } catch (_error) {
       return [];
     }
   }
@@ -342,7 +338,7 @@ class DefaultProcessOperations implements ProcessOperationsInterface {
     try {
       process.kill(pid, 0);
       return true;
-    } catch (error) {
+    } catch (_error) {
       return false;
     }
   }
@@ -671,7 +667,7 @@ class DefaultClaudeInterface implements ClaudeInterface {
         compatible,
         issues,
       };
-    } catch (error) {
+    } catch (_error) {
       return {
         isInstalled: false,
         compatible: false,
@@ -838,7 +834,7 @@ export async function validateClaudeInstallation(
 export async function launchClaudeSession(
   config: ClaudeSessionConfig,
   claudeInterface: ClaudeInterface = defaultClaude,
-  processOps: ProcessOperationsInterface = defaultProcessOps,
+  _processOps: ProcessOperationsInterface = defaultProcessOps,
 ): Promise<LaunchSessionResult> {
   // Validate configuration
   if (!config.workspacePath || config.workspacePath.trim().length === 0) {
@@ -883,7 +879,7 @@ export async function launchClaudeSession(
  * @returns Session discovery result
  */
 export async function findActiveClaudeSessions(
-  claudeInterface: ClaudeInterface = defaultClaude,
+  _claudeInterface: ClaudeInterface = defaultClaude,
   processOps: ProcessOperationsInterface = defaultProcessOps,
   options: SessionDiscoveryOptions = {},
 ): Promise<SessionDiscoveryResult> {
@@ -1131,7 +1127,7 @@ Add project-specific information here.
           await fileSystem.access(sourcePath);
           await fileSystem.copyFile(sourcePath, contextPath);
           setupFiles.push(`.claude/${pathOps.basename(file)}`);
-        } catch (error) {
+        } catch (_error) {
           warnings.push(`Could not copy context file: ${file}`);
         }
       }
@@ -1154,7 +1150,7 @@ Add project-specific information here.
             // File doesn't exist, skip
           }
         }
-      } catch (error) {
+      } catch (_error) {
         warnings.push("Could not sync from repository");
       }
     }
@@ -1166,7 +1162,7 @@ Add project-specific information here.
         const gitignoreContent = await fileSystem.readFile(gitignorePath, "utf-8");
         if (!gitignoreContent.includes(".claude/")) {
           // Append to existing .gitignore
-          const updatedContent = gitignoreContent + "\n# Claude Code context\n.claude/\n";
+          const updatedContent = `${gitignoreContent}\n# Claude Code context\n.claude/\n`;
           await fileSystem.writeFile(gitignorePath, updatedContent, "utf-8");
           setupFiles.push(".gitignore (updated)");
         }
@@ -1364,10 +1360,10 @@ export async function handleClaudeContext(
         for (const file of files) {
           if (file.endsWith(".json") || file.endsWith(".md") || file.endsWith(".ts")) {
             const contextFilePath = pathOps.join(claudeDirPath, file);
-            const stat = await fileSystem.stat(contextFilePath);
+            const _stat = await fileSystem.stat(contextFilePath);
 
             // Update timestamp for tracking
-            const now = new Date();
+            const _now = new Date();
             // Note: utimes is not in FileSystemInterface, we'll skip this operation
             // This is a non-critical operation for timestamp updates
           }
@@ -1590,7 +1586,7 @@ async function checkClaudeContextStatus(
           );
           const validStats = stats.filter(Boolean);
           if (validStats.length > 0) {
-            lastSyncTime = new Date(Math.max(...validStats.map((s) => s!.mtime.getTime())));
+            lastSyncTime = new Date(Math.max(...validStats.map((s) => s?.mtime.getTime()).filter((time): time is number => time !== undefined)));
           }
         }
       } catch {

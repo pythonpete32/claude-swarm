@@ -264,13 +264,13 @@ export interface EnsureBranchOptions {
  * Default Git operations implementation
  */
 class DefaultGitOperations implements GitOperationsInterface {
-  async worktreeAdd(path: string, branch?: string): Promise<void> {
+  async worktreeAdd(_path: string, _branch?: string): Promise<void> {
     // This would implement actual git worktree add command
     // For now, throw not implemented to make tests fail appropriately
     throw new Error("DefaultGitOperations not implemented yet");
   }
 
-  async worktreeRemove(path: string, force = false): Promise<void> {
+  async worktreeRemove(_path: string, _force = false): Promise<void> {
     throw new Error("DefaultGitOperations not implemented yet");
   }
 
@@ -282,27 +282,27 @@ class DefaultGitOperations implements GitOperationsInterface {
     throw new Error("DefaultGitOperations not implemented yet");
   }
 
-  async isWorktree(path: string): Promise<boolean> {
+  async isWorktree(_path: string): Promise<boolean> {
     throw new Error("DefaultGitOperations not implemented yet");
   }
 
-  async getWorktreeRoot(path: string): Promise<string> {
+  async getWorktreeRoot(_path: string): Promise<string> {
     throw new Error("DefaultGitOperations not implemented yet");
   }
 
-  async getCurrentBranch(path: string): Promise<string> {
+  async getCurrentBranch(_path: string): Promise<string> {
     throw new Error("DefaultGitOperations not implemented yet");
   }
 
-  async hasUncommittedChanges(path: string): Promise<boolean> {
+  async hasUncommittedChanges(_path: string): Promise<boolean> {
     throw new Error("DefaultGitOperations not implemented yet");
   }
 
-  async createBranch(name: string, startPoint?: string): Promise<void> {
+  async createBranch(_name: string, _startPoint?: string): Promise<void> {
     throw new Error("DefaultGitOperations not implemented yet");
   }
 
-  async branchExists(name: string): Promise<boolean> {
+  async branchExists(_name: string): Promise<boolean> {
     throw new Error("DefaultGitOperations not implemented yet");
   }
 }
@@ -402,7 +402,7 @@ export async function validateWorktreeState(
       try {
         // This is a bit of a hack for tests - we'll rely on the mock to provide the files
         // In real implementation, this would parse git status output
-        if ((gitOps as any).uncommittedChanges && (gitOps as any).uncommittedChanges.get) {
+        if ((gitOps as any).uncommittedChanges?.get) {
           const mockFiles = (gitOps as any).uncommittedChanges.get(worktreePath);
           validation.uncommittedFiles = mockFiles || ["unknown"];
         } else {
@@ -518,7 +518,7 @@ export async function createWorktree(
     if (setupContext) {
       try {
         contextStatus = await fileOps.ensureClaudeContext(worktreePath);
-      } catch (error) {
+      } catch (_error) {
         // Context setup failure is not critical, just log warning
         contextStatus = {
           isComplete: false,
@@ -742,7 +742,6 @@ export async function listWorktrees(
       case "branch":
         worktrees.sort((a, b) => a.branch.localeCompare(b.branch));
         break;
-      case "path":
       default:
         worktrees.sort((a, b) => a.path.localeCompare(b.path));
         break;

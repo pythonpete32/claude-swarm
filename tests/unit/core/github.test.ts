@@ -101,6 +101,10 @@ class MockGitHubAPI implements GitHubAPIInterface {
     return [...this.callLog];
   }
 
+  getRepository(identifier: string): any {
+    return this.repositories.get(identifier);
+  }
+
   reset(): void {
     this.authState = null;
     this.repositories.clear();
@@ -625,7 +629,7 @@ describe("core-github", () => {
     it("should handle private repository access", async () => {
       // Arrange
       const privateRepo = {
-        ...mockGitHubAPI["repositories"].get("octocat/Hello-World"),
+        ...mockGitHubAPI.getRepository("octocat/Hello-World"),
         private: true,
       };
       mockGitHubAPI.setRepository("octocat/private-repo", privateRepo);

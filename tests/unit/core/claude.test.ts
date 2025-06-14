@@ -377,7 +377,8 @@ class MockClaudeInterface implements ClaudeInterface {
         generatedCode = `function ${request.prompt.includes("test") ? "test" : "generated"}Function() {\n  // Generated implementation\n  return true;\n}`;
         break;
       case "class":
-        generatedCode = `class GeneratedClass {\n  constructor() {\n    // Generated constructor\n  }\n}`;
+        generatedCode =
+          "class GeneratedClass {\n  constructor() {\n    // Generated constructor\n  }\n}";
         break;
       case "test":
         generatedCode = `describe('Generated test', () => {\n  it('should work correctly', () => {\n    expect(true).toBe(true);\n  });\n});`;
@@ -565,7 +566,7 @@ class MockFileSystem implements FileSystemInterface {
     // Return files that are "inside" this directory
     const files: string[] = [];
     for (const [filePath] of this.files) {
-      if (filePath.startsWith(path + "/") && !filePath.substring(path.length + 1).includes("/")) {
+      if (filePath.startsWith(`${path}/`) && !filePath.substring(path.length + 1).includes("/")) {
         files.push(filePath.substring(path.length + 1));
       }
     }
@@ -636,7 +637,7 @@ class MockPath implements PathInterface {
     this.callLog.push({ method: "resolve", args: paths });
     // Simple mock implementation
     const joined = this.join(...paths);
-    return joined.startsWith("/") ? joined : "/" + joined;
+    return joined.startsWith("/") ? joined : `/${joined}`;
   }
 
   dirname(p: string): string {

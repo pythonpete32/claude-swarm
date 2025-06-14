@@ -443,7 +443,7 @@ class DefaultGitHubAPI implements GitHubAPIInterface {
     };
 
     if (this.authToken) {
-      headers["Authorization"] = `token ${this.authToken}`;
+      headers.Authorization = `token ${this.authToken}`;
     }
 
     // Mock implementation for testing
@@ -519,7 +519,7 @@ class DefaultGitHubAPI implements GitHubAPIInterface {
       const expectedSignature = `sha256=${hmac.digest("hex")}`;
 
       return signature === expectedSignature;
-    } catch (error) {
+    } catch (_error) {
       return false;
     }
   }

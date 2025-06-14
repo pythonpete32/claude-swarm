@@ -228,7 +228,7 @@ class MockGitOperations implements GitOperationsInterface {
     const error = this.shouldThrow.get(`branchExists:${name}`);
     if (error) throw error;
 
-    return this.branches.has(name) && this.branches.get(name)!.exists;
+    return this.branches.has(name) && (this.branches.get(name)?.exists ?? false);
   }
 }
 
@@ -260,7 +260,7 @@ class MockFileOperations {
 describe("core-worktree", () => {
   let mockGitOps: MockGitOperations;
   let mockFileOps: MockFileOperations;
-  const testRepoPath = "/test/repo";
+  const _testRepoPath = "/test/repo";
   const testWorktreePath = "/test/repo/worktrees/task-123";
 
   beforeEach(() => {
@@ -836,8 +836,8 @@ describe("core-worktree", () => {
   describe("cleanupOrphanedWorktrees (TDD Phase 6)", () => {
     beforeEach(() => {
       // Set up multiple worktrees including some old ones
-      const oldDate = new Date(Date.now() - 40 * 24 * 60 * 60 * 1000); // 40 days old
-      const recentDate = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000); // 2 days old
+      const _oldDate = new Date(Date.now() - 40 * 24 * 60 * 60 * 1000); // 40 days old
+      const _recentDate = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000); // 2 days old
 
       mockGitOps.setWorktree("/test/repo/worktrees/old-task", {
         path: "/test/repo/worktrees/old-task",
