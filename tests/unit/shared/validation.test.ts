@@ -317,10 +317,8 @@ describe("CommonValidators", () => {
     const validator = CommonValidators.worktreePath();
 
     const validResult = validator.validate("./worktrees/feature");
-    if (!validResult.isValid) {
-      console.log("Validation errors:", validResult.errors);
-    }
     expect(validResult.isValid).toBe(true);
+    expect(validResult.errors).toEqual([]);
 
     const invalidResult = validator.validate("");
     expect(invalidResult.isValid).toBe(false);
