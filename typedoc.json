@@ -1,0 +1,29 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "entryPoints": ["src/main.ts"],
+  "out": "docs",
+  "name": "Claude Codex",
+  "includeVersion": true,
+  "excludePrivate": true,
+  "excludeProtected": true,
+  "excludeExternals": true,
+  "readme": "./README.md",
+  "theme": "default",
+  "hideGenerator": false,
+  "visibilityFilters": {
+    "protected": false,
+    "private": false,
+    "inherited": true
+  },
+  "navigation": {
+    "includeCategories": true,
+    "includeGroups": true
+  },
+  "categorizeByGroup": false,
+  "searchInComments": true,
+  "validation": {
+    "notExported": true,
+    "invalidLink": true,
+    "notDocumented": false
+  }
+}
