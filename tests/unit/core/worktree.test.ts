@@ -230,6 +230,15 @@ class MockGitOperations implements GitOperationsInterface {
 
     return this.branches.has(name) && (this.branches.get(name)?.exists ?? false);
   }
+
+  async getUncommittedFiles(path: string): Promise<string[]> {
+    this.callLog.push({ method: "getUncommittedFiles", args: [path] });
+
+    const error = this.shouldThrow.get(`getUncommittedFiles:${path}`);
+    if (error) throw error;
+
+    return this.uncommittedChanges.get(path) || [];
+  }
 }
 
 // Mock file operations (reuse from files module for context setup)

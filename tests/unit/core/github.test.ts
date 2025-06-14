@@ -488,6 +488,58 @@ class MockGitOperations {
       commit: "abc123def456",
     };
   }
+
+  // Add the missing GitOperationsInterface methods
+  async worktreeAdd(path: string, branch?: string): Promise<void> {
+    this.callLog.push({ method: "worktreeAdd", args: [path, branch] });
+  }
+
+  async worktreeRemove(path: string, force?: boolean): Promise<void> {
+    this.callLog.push({ method: "worktreeRemove", args: [path, force] });
+  }
+
+  async worktreeList(): Promise<any[]> {
+    this.callLog.push({ method: "worktreeList", args: [] });
+    return [];
+  }
+
+  async worktreePrune(): Promise<void> {
+    this.callLog.push({ method: "worktreePrune", args: [] });
+  }
+
+  async isWorktree(path: string): Promise<boolean> {
+    this.callLog.push({ method: "isWorktree", args: [path] });
+    return false;
+  }
+
+  async getWorktreeRoot(path: string): Promise<string> {
+    this.callLog.push({ method: "getWorktreeRoot", args: [path] });
+    return path;
+  }
+
+  async getCurrentBranch(path: string): Promise<string> {
+    this.callLog.push({ method: "getCurrentBranch", args: [path] });
+    return "main";
+  }
+
+  async hasUncommittedChanges(path: string): Promise<boolean> {
+    this.callLog.push({ method: "hasUncommittedChanges", args: [path] });
+    return false;
+  }
+
+  async createBranch(name: string, startPoint?: string): Promise<void> {
+    this.callLog.push({ method: "createBranch", args: [name, startPoint] });
+  }
+
+  async branchExists(name: string): Promise<boolean> {
+    this.callLog.push({ method: "branchExists", args: [name] });
+    return true;
+  }
+
+  async getUncommittedFiles(path: string): Promise<string[]> {
+    this.callLog.push({ method: "getUncommittedFiles", args: [path] });
+    return [];
+  }
 }
 
 // Mock File System for testing
