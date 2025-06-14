@@ -313,6 +313,13 @@ export class FileError extends SwarmError {
  */
 export const ErrorFactory = {
   /**
+   * Create a core SwarmError with standardized formatting
+   */
+  core(code: string, message: string, details?: Record<string, unknown>): SwarmError {
+    return new SwarmError(message, code, "core", details);
+  },
+
+  /**
    * Create a WorktreeError with standardized formatting
    */
   worktree(code: string, message: string, details?: Record<string, unknown>): WorktreeError {

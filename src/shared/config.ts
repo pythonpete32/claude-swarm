@@ -275,7 +275,7 @@ export class ConfigManager {
     }
 
     if (errors.length > 0) {
-      throw ErrorFactory.worktree(
+      throw ErrorFactory.core(
         ERROR_CODES.CORE_INVALID_CONFIGURATION,
         `Configuration validation failed: ${errors.join(", ")}`,
         { errors },
