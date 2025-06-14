@@ -703,6 +703,198 @@ const NAMING_PATTERNS = {
 } as const;
 ```
 
+## Additional Interface Definitions
+
+### Missing Interfaces from Architecture Scan
+
+```typescript
+/**
+ * Missing interfaces identified during final architectural scan
+ * These were referenced across modules but not previously defined
+ */
+
+/**
+ * Claude context status and management
+ */
+interface ClaudeContextStatus {
+  contextComplete: boolean;        // All required context files present
+  missingFiles: string[];          // List of missing context files
+  configPath?: string;             // Path to .claude directory
+  commandsAvailable: string[];     // Available command files
+  settingsValid: boolean;          // Settings file is valid
+}
+
+/**
+ * GitHub authentication result
+ */
+interface GitHubAuth {
+  isValid: boolean;                // Authentication status
+  user: GitHubUser;                // Authenticated user info
+  scopes: string[];                // Available token scopes
+  rateLimit: GitHubRateLimit;      // Current rate limit status
+}
+
+interface GitHubRateLimit {
+  limit: number;                   // Total requests per hour
+  remaining: number;               // Remaining requests
+  reset: Date;                     // Reset timestamp
+}
+
+/**
+ * GitHub project item management
+ */
+interface ProjectItem {
+  id: string;                      // Project item ID
+  issueNodeId: string;             // Associated issue node ID
+  projectId: string;               // Parent project ID
+  fieldValues: Record<string, any>; // Current field values
+}
+
+/**
+ * GitHub branch reference information
+ */
+interface GitHubBranchRef {
+  ref: string;                     // Branch reference name
+  sha: string;                     // Commit SHA
+  repo: RepositoryInfo;            // Repository information
+  label: string;                   // Branch label
+}
+
+/**
+ * GitHub pull request information
+ */
+interface GitHubPullRequest {
+  number: number;                  // PR number
+  id: string;                      // GitHub PR ID
+  nodeId: string;                  // GraphQL node ID
+  title: string;                   // PR title
+  body: string;                    // PR description
+  state: 'open' | 'closed' | 'merged'; // PR state
+  head: GitHubBranchRef;           // Source branch info
+  base: GitHubBranchRef;           // Target branch info
+  url: string;                     // GitHub URL
+  createdAt: Date;                 // Creation timestamp
+  author: GitHubUser;              // PR creator
+}
+
+/**
+ * Review context for review workflows
+ */
+interface ReviewContext {
+  issueNumber: number;             // Original issue being reviewed
+  workBranch: string;              // Branch containing the work
+  baseBranch: string;              // Base branch for comparison
+  reviewWorktreePath: string;      // Path to review worktree
+  trackingIssueNumber?: number;    // Optional tracking issue
+  changedFiles: string[];          // List of changed files
+  diffSummary: {
+    additions: number;             // Lines added
+    deletions: number;             // Lines deleted
+    filesChanged: number;          // Number of files changed
+  };
+}
+
+/**
+ * Claude project settings (local configuration)
+ */
+interface ClaudeProjectSettings {
+  permissions?: {
+    allow?: string[];              // Permission allow rules
+    deny?: string[];               // Permission deny rules
+  };
+  env?: Record<string, string>;    // Environment variables
+  commands?: {
+    enabled: boolean;              // Whether commands are enabled
+    path: string;                  // Path to commands directory
+  };
+  model?: {
+    default?: string;              // Default model for project
+    fallback?: string;             // Fallback model
+  };
+}
+
+/**
+ * Workflow artifact for cleanup tracking
+ */
+interface WorkflowArtifact {
+  type: 'worktree' | 'session' | 'file' | 'issue' | 'pr';
+  path?: string;                   // File system path if applicable
+  id?: string | number;            // GitHub ID if applicable
+  name: string;                    // Human-readable name
+  cleanup?: () => Promise<void>;   // Optional cleanup function
+}
+
+/**
+ * Extended configuration source with metadata
+ */
+interface ConfigurationSource {
+  source: 'cli' | 'env' | 'project' | 'user' | 'default';
+  path?: string;                   // File path if applicable
+  config: Partial<SwarmConfig>;    // Configuration values
+  priority: number;                // Source priority (higher = more important)
+  timestamp?: Date;                // When configuration was loaded
+}
+
+/**
+ * Retry operation options
+ */
+interface RetryOptions {
+  maxRetries?: number;             // Maximum number of retry attempts
+  baseDelay?: number;              // Base delay in milliseconds
+  maxDelay?: number;               // Maximum delay in milliseconds
+  backoffMultiplier?: number;      // Backoff multiplier for exponential backoff
+}
+
+/**
+ * Batch operation results
+ */
+interface BatchOperationResult<T = any> {
+  successful: T[];                 // Successfully processed items
+  failed: Array<{                  // Failed items with errors
+    item: any;
+    error: Error;
+  }>;
+  totalProcessed: number;          // Total items processed
+  successRate: number;             // Success rate (0-1)
+  duration: number;                // Total operation time in milliseconds
+}
+
+/**
+ * Process monitoring information
+ */
+interface ProcessInfo {
+  pid: number;                     // Process ID
+  command: string;                 // Command that was executed
+  arguments: string[];             // Command arguments
+  workingDirectory: string;        // Working directory
+  startTime: Date;                 // When process started
+  isRunning: boolean;              // Whether process is currently running
+  environment?: Record<string, string>; // Environment variables
+}
+
+/**
+ * Git worktree detailed information (extended)
+ */
+interface GitWorktreeDetails extends WorktreeInfo {
+  gitDir: string;                  // Path to .git directory
+  commonDir: string;               // Path to common git directory
+  worktreeDir: string;             // Path to worktree directory
+  locked: boolean;                 // Whether worktree is locked
+  prunable: boolean;               // Whether worktree can be pruned
+  reason?: string;                 // Reason for lock/prune status
+}
+
+/**
+ * Enhanced validation result with warnings and suggestions
+ */
+interface EnhancedValidationResult extends ValidationResult {
+  suggestions: string[];           // Suggestions for fixing issues
+  severity: 'low' | 'medium' | 'high' | 'critical'; // Issue severity
+  fixable: boolean;                // Whether issues can be auto-fixed
+  autoFix?: () => Promise<ValidationResult>; // Auto-fix function if available
+}
+```
+
 ## Export Structure
 
 ```typescript
@@ -720,8 +912,14 @@ export type {
   GitHubIssue,
   GitHubIssueComplete,
   GitHubProject,
+  GitHubPullRequest,
+  GitHubBranchRef,
+  GitHubAuth,
+  GitHubRateLimit,
   TmuxSession,
-  ClaudeSession
+  ClaudeSession,
+  ClaudeContextStatus,
+  ClaudeProjectSettings
 };
 
 // Workflow types
@@ -732,7 +930,9 @@ export type {
   SetupProjectOptions,
   BaseWorkflowResult,
   WorkOnTaskResult,
-  ReviewTaskResult
+  ReviewTaskResult,
+  WorkflowArtifact,
+  ReviewContext
 };
 
 // Configuration types
@@ -780,7 +980,13 @@ export type {
   RequiredFields,
   AgentInfo,
   AgentCoordination,
-  PerformanceMetrics
+  PerformanceMetrics,
+  ProjectItem,
+  RetryOptions,
+  BatchOperationResult,
+  ProcessInfo,
+  GitWorktreeDetails,
+  EnhancedValidationResult
 };
 ```
 
