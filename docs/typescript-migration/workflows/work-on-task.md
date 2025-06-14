@@ -14,38 +14,25 @@ async function workOnTask(options: WorkOnTaskOptions): Promise<WorkOnTaskResult>
 
 ### Configuration Interface
 ```typescript
-interface WorkOnTaskOptions {
-  issueNumber: number;              // Required: Issue to work on
-  agentId?: string | number;        // Agent identifier for parallel development
-  mode?: 'direct' | 'review';       // Work mode (default: 'direct')
-  force?: boolean;                  // Force recreate worktree
-  skipContext?: boolean;            // Skip Claude context setup
-  model?: string;                   // Claude model override
-  resumeSession?: boolean;          // Resume existing session
-  interactive?: boolean;            // Enable user prompts
-}
+// Uses shared WorkOnTaskOptions interface from shared/types.ts
+// Extends BaseWorkflowOptions with work-specific parameters
+// See shared/types.ts for complete interface definition
 ```
 
 ### Result Interface
 ```typescript
-interface WorkOnTaskResult {
-  worktree: WorktreeInfo;           // Created or resumed worktree
-  session: TmuxSessionInfo;         // Created tmux session
-  claudeSession: ClaudeSessionInfo; // Launched Claude session
-  resumed: boolean;                 // Whether resumed existing work
-  workPrompt: string;               // Generated work prompt
-}
+// Uses shared WorkOnTaskResult interface from shared/types.ts
+// Extends BaseWorkflowResult with work-specific results
+// See shared/types.ts for complete interface definition
 ```
 
 ### Supporting Interfaces
 ```typescript
-interface ClaudeSessionInfo {
-  sessionName: string;              // tmux session name
-  workingDirectory: string;         // Session working directory
-  prompt: string;                   // Initial prompt sent
-  model?: string;                   // Claude model used
-  pid?: number;                     // Process ID if available
-}
+// Uses shared interfaces from shared/types.ts:
+// - ClaudeSession: Claude session information
+// - TmuxSession: tmux session information  
+// - WorktreeInfo: worktree details
+// - AgentInfo: agent coordination data
 ```
 
 ## CLI Entry Points
@@ -119,14 +106,16 @@ interface WorkOnTaskError extends Error {
 ## Parallel Development Support
 
 ### Agent Isolation
-- Each agent gets unique worktree: `../task-{issue}-agent-{id}-{timestamp}/`
-- Each agent gets unique branch: `issue-{issue}-agent-{id}-{slug}`
-- Each agent gets unique session: `swarm-task-{issue}-agent-{id}`
+- Each agent gets unique worktree: Uses `NAMING_PATTERNS.WORKTREE_TIMESTAMPED` from shared/types.ts
+- Each agent gets unique branch: Uses `NAMING_PATTERNS.BRANCH_TASK` from shared/types.ts  
+- Each agent gets unique session: Uses `NAMING_PATTERNS.TMUX_SESSION` from shared/types.ts
 
 ### Agent Coordination
-- Display other agents working on same issue
+- Display other agents working on same issue using `getActiveAgents()` from core-worktree
+- Detect conflicts using `detectAgentConflicts()` from core-worktree
 - No file conflicts due to worktree isolation
 - Independent tmux sessions for monitoring
+- Coordinate cleanup using `coordinateAgentCleanup()` from core-worktree
 
 ## Integration Points
 

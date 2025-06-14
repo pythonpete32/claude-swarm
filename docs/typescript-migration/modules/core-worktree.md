@@ -6,8 +6,9 @@
 Provides reusable git worktree operations that can be parameterized for different workflow contexts (task work, review, etc).
 
 ## Dependencies
-- `shared/types.ts` - WorktreeInfo, WorktreeOptions interfaces
-- `shared/errors.ts` - WorktreeError class
+- `shared/types.ts` - WorktreeInfo, RepositoryInfo, GitBranchInfo interfaces
+- `shared/errors.ts` - WorktreeError class and error codes
+- `shared/config.ts` - WorktreeConfig for default behavior
 - `core/git.ts` - Git repository operations
 - Node.js `child_process` - For git command execution
 
@@ -22,28 +23,23 @@ async function createWorktree(options: CreateWorktreeOptions): Promise<WorktreeI
 
 **Parameters:**
 ```typescript
+// Uses shared interface from shared/types.ts
 interface CreateWorktreeOptions {
   name: string;                    // Worktree identifier (e.g., 'task-123', 'review-issue-45')
   branchName?: string;             // Specific branch name to create/use
   sourceBranch?: string;           // Branch to create from (default: current branch)
-  basePath?: string;               // Base directory (default: '../')
-  namingStrategy?: 'simple' | 'timestamped';  // Default: 'simple'
+  basePath?: string;               // Base directory (default: from WorktreeConfig)
+  namingStrategy?: 'simple' | 'timestamped';  // Default: from WorktreeConfig
   forceCreate?: boolean;           // Override existing worktree (default: false)
   repositoryPath?: string;         // Repository root path (default: current repo)
+  agentId?: string | number;       // Agent identifier for parallel development
 }
 ```
 
 **Returns:**
 ```typescript
-interface WorktreeInfo {
-  name: string;                    // Worktree name
-  path: string;                    // Absolute path to worktree
-  branch: string;                  // Associated branch name
-  sourceBranch: string;            // Branch it was created from
-  created: Date;                   // Creation timestamp
-  isActive: boolean;               // Whether worktree is currently active
-  head: string;                    // Current HEAD commit SHA
-}
+// Uses shared interface from shared/types.ts
+// See shared/types.ts for complete WorktreeInfo definition
 ```
 
 **Behavior:**
@@ -56,11 +52,13 @@ interface WorktreeInfo {
 - Creates worktree using `git worktree add`
 
 **Error Conditions:**
-- `WorktreeError('INVALID_REPOSITORY')` - Not in git repository
+- `WorktreeError('WORKTREE_INVALID_REPOSITORY')` - Not in git repository
 - `WorktreeError('WORKTREE_EXISTS')` - Worktree already exists at path
-- `WorktreeError('BRANCH_CHECKOUT_CONFLICT')` - Branch already checked out
-- `WorktreeError('INVALID_SOURCE_BRANCH')` - Source branch doesn't exist
-- `WorktreeError('PERMISSION_DENIED')` - Cannot create directory/worktree
+- `WorktreeError('WORKTREE_BRANCH_CHECKOUT_CONFLICT')` - Branch already checked out
+- `WorktreeError('WORKTREE_INVALID_SOURCE_BRANCH')` - Source branch doesn't exist
+- `WorktreeError('WORKTREE_PERMISSION_DENIED')` - Cannot create directory/worktree
+
+*Error codes follow shared ERROR_CODES pattern: MODULE_ERROR_TYPE*
 
 ---
 
@@ -85,8 +83,10 @@ interface RemoveWorktreeOptions {
 
 **Error Conditions:**
 - `WorktreeError('WORKTREE_NOT_FOUND')` - Path doesn't exist or isn't a worktree
-- `WorktreeError('UNCOMMITTED_CHANGES')` - Has changes and force=false
-- `WorktreeError('REMOVAL_FAILED')` - Git command failed
+- `WorktreeError('WORKTREE_UNCOMMITTED_CHANGES')` - Has changes and force=false
+- `WorktreeError('WORKTREE_REMOVAL_FAILED')` - Git command failed
+
+*Error codes follow shared ERROR_CODES pattern: MODULE_ERROR_TYPE*
 
 ---
 
@@ -133,13 +133,12 @@ async function validateWorktreeState(path: string): Promise<WorktreeValidation>
 
 **Returns:**
 ```typescript
-interface WorktreeValidation {
-  isValid: boolean;                // Worktree exists and is valid
-  isClean: boolean;                // No uncommitted changes
-  isRegistered: boolean;           // Known to git worktree list
-  hasUnpushedCommits: boolean;     // Has commits not pushed to remote
-  issues: string[];                // Array of validation problems
-}
+// Uses shared WorktreeValidation interface from shared/types.ts
+// Extends ValidationResult with worktree-specific fields:
+// - isClean: boolean
+// - isRegistered: boolean  
+// - hasUnpushedCommits: boolean
+// See shared/types.ts for complete interface definition
 ```
 
 **Behavior:**
@@ -156,17 +155,20 @@ function generateWorktreePath(options: {
   basePath: string;
   namingStrategy: 'simple' | 'timestamped';
   repoName: string;
+  agentId?: string | number;       // Agent identifier for parallel development
 }): string
 ```
 
 **Behavior:**
-- Pure function for path generation
-- Handles different naming strategies
+- Pure function for path generation using shared NAMING_PATTERNS
+- Handles different naming strategies from shared/types.ts
+- Supports agent isolation for parallel development
 - Ensures path uniqueness for timestamped strategy
+- Uses NAMING_PATTERNS.WORKTREE_SIMPLE and NAMING_PATTERNS.WORKTREE_TIMESTAMPED
 
 ## Usage Examples
 
-### Task Worktree Creation
+### Task Worktree Creation (Single Agent)
 ```typescript
 const taskWorktree = await createWorktree({
   name: 'task-123',
@@ -174,6 +176,27 @@ const taskWorktree = await createWorktree({
   namingStrategy: 'simple'
 });
 // Result: ../claude-swarm-task-123/
+```
+
+### Task Worktree Creation (Parallel Agents)
+```typescript
+// Agent 1
+const agent1Worktree = await createWorktree({
+  name: 'task-123',
+  sourceBranch: 'main',
+  agentId: 1,
+  namingStrategy: 'timestamped'
+});
+// Result: ../task-123-agent-1-20241214-143022/
+
+// Agent 2 working on same issue
+const agent2Worktree = await createWorktree({
+  name: 'task-123',
+  sourceBranch: 'main',
+  agentId: 2,
+  namingStrategy: 'timestamped'
+});
+// Result: ../task-123-agent-2-20241214-143045/
 ```
 
 ### Review Worktree Creation  
@@ -193,6 +216,12 @@ const reviewWorktrees = await findWorktrees('review-issue-*');
 
 // Remove specific worktree
 await removeWorktree(reviewWorktrees[0].path, { force: false });
+
+// Find abandoned agent worktrees
+const abandonedWorktrees = await findAbandonedWorktrees({
+  pattern: 'task-*-agent-*',
+  maxAge: 7
+});
 ```
 
 ---
@@ -216,8 +245,8 @@ interface CurrentWorktreeCleanupOptions {
 
 **Returns:**
 ```typescript
-interface CleanupResult {
-  success: boolean;                // Cleanup completed successfully
+// Uses shared interface pattern from shared/types.ts
+interface CleanupResult extends BaseWorkflowResult {
   worktreeRemoved: boolean;        // Worktree was deleted
   sessionTerminated: boolean;      // tmux session was killed
   filesPreserved: string[];        // Files saved before cleanup
@@ -318,6 +347,79 @@ interface CleanupError {
 
 ---
 
+## Agent Coordination Functions
+
+### getActiveAgents
+```typescript
+async function getActiveAgents(issueNumber: number): Promise<AgentInfo[]>
+```
+
+**Parameters:**
+- `issueNumber: number` - Issue number to check for active agents
+
+**Returns:** Array of AgentInfo objects representing agents currently working on the issue
+
+**Behavior:**
+- Scans for worktrees matching agent patterns for the issue
+- Checks tmux sessions for agent activity
+- Returns active agent information for coordination
+
+**Usage:**
+```typescript
+// Check what agents are working on issue #123
+const activeAgents = await getActiveAgents(123);
+console.log(`${activeAgents.length} agents working on issue #123`);
+```
+
+---
+
+### detectAgentConflicts
+```typescript
+async function detectAgentConflicts(issueNumber: number): Promise<AgentConflict[]>
+```
+
+**Returns:**
+```typescript
+// Uses shared AgentConflict interface from shared/types.ts
+// Detects file conflicts, branch conflicts, session conflicts
+```
+
+**Behavior:**
+- Analyzes all agent worktrees for the issue
+- Detects potential conflicts between agents
+- Returns recommendations for conflict resolution
+
+---
+
+### coordinateAgentCleanup
+```typescript
+async function coordinateAgentCleanup(issueNumber: number, options?: AgentCleanupOptions): Promise<AgentCleanupResult>
+```
+
+**Parameters:**
+```typescript
+interface AgentCleanupOptions {
+  preserveActiveAgents?: boolean;  // Keep active agent worktrees
+  consolidateResults?: boolean;    // Merge agent work results
+  maxConcurrent?: number;          // Maximum parallel cleanup operations
+}
+
+interface AgentCleanupResult extends BaseWorkflowResult {
+  agentsProcessed: number;         // Total agents processed
+  agentsRemoved: number;           // Agents successfully cleaned up
+  agentsPreserved: number;         // Agents kept (still active)
+  conflictsDetected: AgentConflict[]; // Conflicts that need manual resolution
+}
+```
+
+**Behavior:**
+- Coordinates cleanup of multiple agent worktrees for an issue
+- Handles agent-specific cleanup safely
+- Preserves active agents by default
+- Provides conflict resolution guidance
+
+---
+
 ## Testing Considerations
 
 ### Unit Tests
@@ -341,10 +443,22 @@ interface CleanupError {
 - Git 2.5+ (for worktree support)
 - Write permissions in base directory
 
-### Configurable Behavior
-- Base path for worktree creation
-- Default naming strategy
-- Cleanup behavior (auto-prune references)
+### Configurable Behavior (via shared/config.ts)
+```typescript
+// Uses WorktreeConfig from shared infrastructure
+interface WorktreeConfig {
+  basePath: string;                // Default base path for worktrees
+  namingStrategy: 'simple' | 'timestamped'; // Default naming strategy
+  autoCleanup: boolean;            // Automatic cleanup of old worktrees
+  maxAge: number;                  // Days before considering worktree abandoned
+}
+```
+
+**Default Values** (from DEFAULT_CONFIG):
+- `basePath: '../'`
+- `namingStrategy: 'simple'`
+- `autoCleanup: true`
+- `maxAge: 7`
 
 ## Performance Considerations
 

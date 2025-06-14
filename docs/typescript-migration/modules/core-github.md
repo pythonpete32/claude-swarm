@@ -9,9 +9,9 @@ Provides comprehensive GitHub API integration using Octokit, replacing all `gh` 
 - `@octokit/rest` - GitHub REST API client
 - `@octokit/graphql` - GitHub GraphQL API client
 - `@octokit/openapi-types` - TypeScript types for GitHub API responses
-- `shared/types.ts` - GitHub-related interfaces
-- `shared/errors.ts` - GitHubError class
-- `shared/config.ts` - GitHub configuration and authentication
+- `shared/types.ts` - RepositoryInfo, GitHubIssue, GitHubProject interfaces
+- `shared/errors.ts` - GitHubError, GitHubAPIError, GitHubRateLimitError classes
+- `shared/config.ts` - GitHubConfig and authentication management
 
 ## External Documentation References
 - [GitHub REST API - Issues](https://docs.github.com/en/rest/issues/issues)
@@ -31,17 +31,9 @@ async function detectRepository(): Promise<RepositoryInfo>
 
 **Returns:**
 ```typescript
-interface RepositoryInfo {
-  owner: string;                   // Repository owner/organization
-  name: string;                    // Repository name
-  id: string;                      // GitHub repository ID
-  nodeId: string;                  // GraphQL node ID
-  defaultBranch: string;           // Main/master branch name
-  isPrivate: boolean;              // Repository visibility
-  isFork: boolean;                 // Whether it's a fork
-  parentRepo?: RepositoryInfo;     // Parent repo if fork
-  remoteUrl: string;               // Git remote URL
-}
+// Uses shared RepositoryInfo interface from shared/types.ts
+// See shared/types.ts for complete interface definition
+// Includes GitHub-specific extensions under the `github` property
 ```
 
 **Behavior:**
@@ -51,10 +43,12 @@ interface RepositoryInfo {
 - Detects fork relationships
 
 **Error Conditions:**
-- `GitHubError('NO_REMOTE_ORIGIN')` - No git remote origin configured
-- `GitHubError('INVALID_REMOTE_URL')` - Remote URL not a GitHub repository
-- `GitHubError('REPOSITORY_NOT_FOUND')` - Repository doesn't exist or no access
-- `GitHubError('AUTHENTICATION_FAILED')` - Invalid or missing GitHub token
+- `GitHubError('GITHUB_NO_REMOTE_ORIGIN')` - No git remote origin configured
+- `GitHubError('GITHUB_INVALID_REMOTE_URL')` - Remote URL not a GitHub repository
+- `GitHubError('GITHUB_REPOSITORY_NOT_FOUND')` - Repository doesn't exist or no access
+- `GitHubError('GITHUB_AUTH_FAILED')` - Invalid or missing GitHub token
+
+*Error codes follow shared ERROR_CODES pattern: MODULE_ERROR_TYPE*
 
 ---
 
@@ -67,45 +61,16 @@ async function getIssue(repoInfo: RepositoryInfo, issueNumber: number): Promise<
 
 **Returns:**
 ```typescript
-// Based on @octokit/openapi-types and GitHub REST API documentation
-interface GitHubIssue {
-  id: number;                      // Unique issue ID
-  number: number;                  // Issue number within repository
-  node_id: string;                 // GraphQL node ID (CRITICAL for relationships)
-  url: string;                     // API endpoint URL
-  repository_url: string;          // Repository API URL
-  html_url: string;                // GitHub web URL
-  title: string;                   // Issue title
-  body: string | null;             // Issue description (can be null)
-  state: "open" | "closed";        // Issue state
-  locked: boolean;                 // Whether issue is locked
-  user: GitHubUser;                // Issue creator
-  assignee: GitHubUser | null;     // Primary assignee
-  assignees: GitHubUser[];         // All assigned users
-  labels: GitHubLabel[];           // Applied labels
-  milestone: GitHubMilestone | null; // Associated milestone
-  comments: number;                // Number of comments
-  created_at: string;              // ISO timestamp
-  updated_at: string;              // ISO timestamp
-  closed_at: string | null;        // Closure timestamp
-  author_association: string;      // Creator's relationship to repo
-  active_lock_reason: string | null; // Reason for locking
-  reactions: GitHubReactions;      // Emoji reactions
-  events_url: string;              // Events API endpoint
-  comments_url: string;            // Comments API endpoint
-  labels_url: string;              // Labels API endpoint
-  pull_request?: {                 // Present if linked to PR
-    url: string;
-    html_url: string;
-    diff_url: string;
-    patch_url: string;
-  };
-}
+// Uses shared GitHubIssue interface from shared/types.ts
+// Based on @octokit/openapi-types for maximum compatibility
+// See shared/types.ts for complete interface definition
 ```
 
 **Error Conditions:**
-- `GitHubError('ISSUE_NOT_FOUND')` - Issue doesn't exist
-- `GitHubError('ACCESS_DENIED')` - No permission to read issue
+- `GitHubError('GITHUB_ISSUE_NOT_FOUND')` - Issue doesn't exist
+- `GitHubError('GITHUB_ACCESS_DENIED')` - No permission to read issue
+
+*Error codes follow shared ERROR_CODES pattern: MODULE_ERROR_TYPE*
 
 ---
 
@@ -116,10 +81,10 @@ async function getIssueWithRelationships(repoInfo: RepositoryInfo, issueNumber: 
 
 **Returns:**
 ```typescript
-interface GitHubIssueComplete extends GitHubIssue {
-  relationships: GitHubIssueRelationships;
-  projectAssociations: GitHubIssueProjectInfo[];
-}
+// Uses shared GitHubIssueComplete interface from shared/types.ts
+// Includes relationships and project associations
+// See shared/types.ts for complete interface definition
+```
 
 interface GitHubIssueRelationships {
   // These come from GitHub Projects v2 custom fields via GraphQL
@@ -299,9 +264,11 @@ mutation UpdateProjectItemField($projectId: ID!, $itemId: ID!, $fieldId: ID!, $v
 
 **Error Conditions:**
 - All from `createIssue()` plus:
-- `GitHubError('PROJECT_NOT_FOUND')` - Project doesn't exist
-- `GitHubError('PROJECT_ADD_FAILED')` - Failed to add issue to project
-- `GitHubError('FIELD_UPDATE_FAILED')` - Failed to set field values
+- `GitHubError('GITHUB_PROJECT_NOT_FOUND')` - Project doesn't exist
+- `GitHubError('GITHUB_PROJECT_ADD_FAILED')` - Failed to add issue to project
+- `GitHubError('GITHUB_FIELD_UPDATE_FAILED')` - Failed to set field values
+
+*Error codes follow shared ERROR_CODES pattern: MODULE_ERROR_TYPE*
 
 ---
 
@@ -357,17 +324,8 @@ async function getProject(owner: string, projectNumber: number): Promise<GitHubP
 
 **Returns:**
 ```typescript
-interface GitHubProject {
-  id: string;                      // GraphQL node ID
-  number: number;                  // Project number
-  title: string;                   // Project title
-  description?: string;            // Project description
-  url: string;                     // Project URL
-  owner: GitHubUser;               // Project owner
-  visibility: 'public' | 'private'; // Project visibility
-  fields: ProjectField[];          // Custom fields
-  createdAt: Date;                 // Creation timestamp
-}
+// Uses shared GitHubProject interface from shared/types.ts
+// See shared/types.ts for complete interface definition
 ```
 
 ---
@@ -412,9 +370,11 @@ mutation CreateProject($ownerId: ID!, $title: String!, $description: String) {
 ```
 
 **Error Conditions:**
-- `GitHubError('PROJECT_CREATE_FAILED')` - Failed to create project
-- `GitHubError('INVALID_OWNER')` - Owner doesn't exist or no permissions
-- `GitHubError('PROJECT_EXISTS')` - Project with same title already exists
+- `GitHubError('GITHUB_PROJECT_CREATE_FAILED')` - Failed to create project
+- `GitHubError('GITHUB_INVALID_OWNER')` - Owner doesn't exist or no permissions
+- `GitHubError('GITHUB_PROJECT_EXISTS')` - Project with same title already exists
+
+*Error codes follow shared ERROR_CODES pattern: MODULE_ERROR_TYPE*
 
 ---
 
@@ -571,23 +531,16 @@ async function validateAuthentication(): Promise<GitHubAuth>
 
 **Returns:**
 ```typescript
-interface GitHubAuth {
-  isValid: boolean;                // Authentication status
-  user: GitHubUser;                // Authenticated user info
-  scopes: string[];                // Available token scopes
-  rateLimit: GitHubRateLimit;      // Current rate limit status
-}
-
-interface GitHubRateLimit {
-  limit: number;                   // Total requests per hour
-  remaining: number;               // Remaining requests
-  reset: Date;                     // Reset timestamp
-}
+// Uses shared validation pattern from shared/types.ts
+// Follows ValidationResult pattern with GitHub-specific auth data
+// See shared/types.ts for GitHubAuth interface definition
 ```
 
 **Error Conditions:**
-- `GitHubError('INVALID_TOKEN')` - Token invalid or expired
-- `GitHubError('INSUFFICIENT_SCOPES')` - Token missing required scopes
+- `GitHubError('GITHUB_INVALID_TOKEN')` - Token invalid or expired
+- `GitHubError('GITHUB_INSUFFICIENT_SCOPES')` - Token missing required scopes
+
+*Error codes follow shared ERROR_CODES pattern: MODULE_ERROR_TYPE*
 
 ## Usage Examples
 
@@ -687,6 +640,20 @@ Closes #123
 - Mock authentication for unit tests
 
 ## Configuration Requirements
+
+### Configurable Behavior (via shared/config.ts)
+```typescript
+// Uses GitHubConfig from shared infrastructure
+interface GitHubConfig {
+  defaultProject?: number;         // Default project number
+  autoCreateLabels: boolean;       // Automatically create missing labels
+  rateLimitRetries: number;        // Number of rate limit retries
+}
+```
+
+**Default Values** (from DEFAULT_CONFIG):
+- `autoCreateLabels: true`
+- `rateLimitRetries: 3`
 
 ### Environment Dependencies
 - GitHub personal access token with appropriate scopes:

@@ -6,10 +6,10 @@
 Provides Claude Code integration for launching interactive sessions, generating context-aware prompts, and managing Claude Code processes within tmux sessions. Central to the workflow orchestration system.
 
 ## Dependencies
-- `shared/types.ts` - Claude-related interfaces
-- `shared/errors.ts` - ClaudeError class
-- `shared/config.ts` - Claude configuration
-- `core/tmux.ts` - Session management for Claude processes
+- `shared/types.ts` - ClaudeSession, ClaudeValidation, RepositoryInfo, GitBranchInfo interfaces
+- `shared/errors.ts` - ClaudeError class and error codes
+- `shared/config.ts` - ClaudeConfig for default behavior
+- `core/tmux.ts` - TmuxSession management for Claude processes
 - Node.js `child_process` - For Claude CLI execution
 
 ## External Documentation References
@@ -28,11 +28,12 @@ async function validateClaudeAvailable(): Promise<ClaudeValidation>
 
 **Returns:**
 ```typescript
-interface ClaudeValidation {
-  isValid: boolean;                // Whether Claude CLI is available and working
-  version?: string;                // Claude CLI version if available
-  issues: string[];                // Any detected problems
-}
+// Uses shared ClaudeValidation interface from shared/types.ts
+// Extends ValidationResult with Claude-specific fields:
+// - version?: string
+// - isAuthenticated?: boolean
+// - hasRequiredPermissions: boolean
+// See shared/types.ts for complete interface definition
 ```
 
 **Behavior:**
@@ -44,6 +45,8 @@ interface ClaudeValidation {
 
 **Error Conditions:**
 - `ClaudeError('CLAUDE_NOT_FOUND')` - Claude CLI not installed or in PATH
+
+*Error codes follow shared ERROR_CODES pattern: MODULE_ERROR_TYPE*
 
 **Note:** Authentication status cannot be checked directly via CLI - only available through `/status` slash command in interactive mode.
 
@@ -234,14 +237,9 @@ interface ClaudeLaunchOptions {
 
 **Returns:**
 ```typescript
-interface ClaudeSession {
-  processId?: number;              // Claude process ID (if detached)
-  sessionName?: string;            // tmux session name if used
-  workingDirectory: string;        // Working directory
-  startTime: Date;                 // Session start time
-  isActive: boolean;               // Whether session is running
-  command: string;                 // Full command that was executed
-}
+// Uses shared ClaudeSession interface from shared/types.ts
+// See shared/types.ts for complete interface definition
+// Includes model tracking and session metadata
 ```
 
 **Behavior:**
@@ -269,9 +267,11 @@ claude --add-dir ../lib --model claude-sonnet-4 --dangerously-skip-permissions
 ```
 
 **Error Conditions:**
-- `ClaudeError('LAUNCH_FAILED')` - Failed to start Claude process
-- `ClaudeError('DIRECTORY_NOT_FOUND')` - Working directory doesn't exist
-- `ClaudeError('TMUX_SESSION_FAILED')` - Failed to create tmux session
+- `ClaudeError('CLAUDE_LAUNCH_FAILED')` - Failed to start Claude process
+- `ClaudeError('CLAUDE_DIRECTORY_NOT_FOUND')` - Working directory doesn't exist
+- `ClaudeError('CLAUDE_TMUX_SESSION_FAILED')` - Failed to create tmux session
+
+*Error codes follow shared ERROR_CODES pattern: MODULE_ERROR_TYPE*
 
 ---
 
@@ -432,8 +432,8 @@ async function updateClaudeSettings(settings: Partial<ClaudeProjectSettings>, se
 ```typescript
 // Validate Claude is ready
 const validation = await validateClaudeAvailable();
-if (!validation.isAvailable) {
-  throw new ClaudeError('Claude CLI not available');
+if (!validation.isValid) {
+  throw new ClaudeError('Claude CLI not available', 'CLAUDE_NOT_FOUND');
 }
 
 // Generate work prompt
@@ -540,6 +540,22 @@ if (result.success) {
 
 ## Configuration Requirements
 
+### Configurable Behavior (via shared/config.ts)
+```typescript
+// Uses ClaudeConfig from shared infrastructure
+interface ClaudeConfig {
+  defaultModel?: string;           // Default Claude model
+  skipPermissions: boolean;        // Use --dangerously-skip-permissions
+  verboseOutput: boolean;          // Enable verbose logging
+  maxTurns?: number;               // Default max turns for non-interactive
+}
+```
+
+**Default Values** (from DEFAULT_CONFIG):
+- `skipPermissions: true`
+- `verboseOutput: false`
+- `maxTurns: 10`
+
 ### Environment Dependencies
 - Claude CLI installed and authenticated
 - tmux installed (for session management)
@@ -565,7 +581,7 @@ if (result.success) {
 try {
   const session = await launchClaudeInteractive(options);
 } catch (error) {
-  if (error instanceof ClaudeError && error.code === 'LAUNCH_FAILED') {
+  if (error instanceof ClaudeError && error.code === 'CLAUDE_LAUNCH_FAILED') {
     // Clean up any partial session state
     await cleanupFailedSession(options.sessionName);
     // Retry once
