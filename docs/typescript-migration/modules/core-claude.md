@@ -288,6 +288,8 @@ async function sendPromptToSession(sessionName: string, prompt: string): Promise
 **Behavior:**
 - Sends prompt to existing Claude session via tmux
 - Handles prompt formatting and transmission
+- Escapes special characters for tmux send-keys
+- Adds newline to submit prompt
 - Useful for sending additional instructions to running sessions
 
 **Error Conditions:**

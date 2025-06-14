@@ -13,6 +13,20 @@ We validated 5 areas:
 
 ## 🚨 Critical Issues Found
 
+### ✅ Fixed During Workflow Design
+
+1. **Worktree Module Updates**
+   - Added `repositoryPath` parameter to `createWorktree`
+   - Added `branchName` parameter for explicit branch naming
+   - Added `head` field to `WorktreeInfo` 
+   - Enhanced `findWorktrees` with glob pattern support and sorting
+   - Added `hasUnpushedCommits` to `validateWorktreeState`
+
+2. **Claude Module Updates**
+   - Enhanced `sendPromptToSession` documentation
+
+## ⚠️ Remaining Issues
+
 ### 1. Module Interface Mismatches
 
 #### Worktree + Git Integration

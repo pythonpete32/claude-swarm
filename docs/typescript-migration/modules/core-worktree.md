@@ -24,10 +24,12 @@ async function createWorktree(options: CreateWorktreeOptions): Promise<WorktreeI
 ```typescript
 interface CreateWorktreeOptions {
   name: string;                    // Worktree identifier (e.g., 'task-123', 'review-issue-45')
+  branchName?: string;             // Specific branch name to create/use
   sourceBranch?: string;           // Branch to create from (default: current branch)
   basePath?: string;               // Base directory (default: '../')
   namingStrategy?: 'simple' | 'timestamped';  // Default: 'simple'
   forceCreate?: boolean;           // Override existing worktree (default: false)
+  repositoryPath?: string;         // Repository root path (default: current repo)
 }
 ```
 
@@ -40,6 +42,7 @@ interface WorktreeInfo {
   sourceBranch: string;            // Branch it was created from
   created: Date;                   // Creation timestamp
   isActive: boolean;               // Whether worktree is currently active
+  head: string;                    // Current HEAD commit SHA
 }
 ```
 
@@ -93,14 +96,16 @@ async function findWorktrees(pattern?: string): Promise<WorktreeInfo[]>
 ```
 
 **Parameters:**
-- `pattern?: string` - Optional glob pattern to filter worktrees (e.g., 'review-issue-*')
+- `pattern?: string` - Optional glob pattern to filter worktrees (e.g., 'review-issue-*', '*task-123*')
 
-**Returns:** Array of WorktreeInfo objects for matching worktrees
+**Returns:** Array of WorktreeInfo objects for matching worktrees, sorted by creation date (newest first)
 
 **Behavior:**
 - Lists all git worktrees using `git worktree list`
-- Optionally filters by pattern
+- Filters by glob pattern if provided
+- Supports wildcards: `*task-123*`, `review-issue-*-20241214-*`
 - Returns structured information for each worktree
+- Sorts by creation timestamp, newest first
 
 ---
 
@@ -129,12 +134,20 @@ async function validateWorktreeState(path: string): Promise<WorktreeValidation>
 **Returns:**
 ```typescript
 interface WorktreeValidation {
-  isValid: boolean;
+  isValid: boolean;                // Worktree exists and is valid
   isClean: boolean;                // No uncommitted changes
   isRegistered: boolean;           // Known to git worktree list
+  hasUnpushedCommits: boolean;     // Has commits not pushed to remote
   issues: string[];                // Array of validation problems
 }
 ```
+
+**Behavior:**
+- Checks if path is a valid git worktree
+- Verifies worktree is registered with git
+- Checks for uncommitted changes using `git status`
+- Checks for unpushed commits
+- Returns detailed validation status
 
 #### generateWorktreePath
 ```typescript
