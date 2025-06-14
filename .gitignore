@@ -3,4 +3,5 @@
 node_modules/*
 dist/*
 coverage/*
-docs/*.DS_Store
+docs/*
+.DS_Store
