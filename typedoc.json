@@ -1,6 +1,15 @@
 {
   "$schema": "https://typedoc.org/schema.json",
-  "entryPoints": ["src/main.ts"],
+  "entryPoints": [
+    "src/core/git.ts",
+    "src/shared/index.ts",
+    "src/shared/types.ts",
+    "src/shared/errors.ts",
+    "src/shared/config.ts",
+    "src/shared/validation.ts",
+    "src/shared/utils.ts"
+  ],
+  "entryPointStrategy": "expand",
   "out": "docs",
   "name": "Claude Codex",
   "includeVersion": true,
@@ -10,6 +19,15 @@
   "readme": "./README.md",
   "theme": "default",
   "hideGenerator": false,
+  "categorizeByGroup": true,
+  "groupOrder": [
+    "Core Modules",
+    "Shared Infrastructure",
+    "Types",
+    "Configuration",
+    "Utilities",
+    "*"
+  ],
   "visibilityFilters": {
     "protected": false,
     "private": false,
@@ -19,11 +37,27 @@
     "includeCategories": true,
     "includeGroups": true
   },
-  "categorizeByGroup": false,
   "searchInComments": true,
+  "sort": ["source-order"],
+  "kindSortOrder": [
+    "Module",
+    "Namespace",
+    "Enum",
+    "Class",
+    "Interface",
+    "TypeAlias",
+    "Constructor",
+    "Property",
+    "Method",
+    "Function",
+    "Accessor",
+    "Variable"
+  ],
   "validation": {
     "notExported": true,
     "invalidLink": true,
-    "notDocumented": false
-  }
+    "notDocumented": true
+  },
+  "treatWarningsAsErrors": false,
+  "treatValidationWarningsAsErrors": false
 }
