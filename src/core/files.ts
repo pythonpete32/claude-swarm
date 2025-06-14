@@ -378,8 +378,8 @@ class DefaultPath implements PathInterface {
 /**
  * Default implementations
  */
-const defaultFileSystem = new DefaultFileSystem();
-const defaultPath = new DefaultPath();
+export const defaultFileSystem = new DefaultFileSystem();
+export const defaultPath = new DefaultPath();
 
 /**
  * Validate project file structure for development workflows.
