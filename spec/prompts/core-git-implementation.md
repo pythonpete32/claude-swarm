@@ -148,11 +148,6 @@ Used By (Future):
 </dependencies>
 
 <performance>
-Performance Requirements:
-- Repository validation: < 500ms
-- Branch operations: < 1 second
-- Diff generation: < 2 seconds for reasonable file sizes
-- Remote URL parsing: < 10ms (synchronous)
 
 Optimization Guidelines:
 - Cache repository validation results when appropriate

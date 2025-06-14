@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code when working with the Claude Swarm codebase.
 
+## General Guidelines
+
+- Always make sure you run `bun run test:run`,`bun run typecheck` and `bun run lint:fix` claiming work is done.
+
 ## Architecture Principles
 
 ### 4-Layer Architecture (ALWAYS follow this structure)
