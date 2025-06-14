@@ -22,7 +22,7 @@ Provides core Git repository operations that support worktree management, GitHub
 
 #### validateRepository
 ```typescript
-async function validateRepository(path?: string): Promise<Yeah, let's tackle the code. Let's tackle the code typescript next.>
+async function validateRepository(path?: string): Promise<GitRepositoryValidation>
 ```
 
 **Parameters:**
@@ -30,22 +30,12 @@ async function validateRepository(path?: string): Promise<Yeah, let's tackle the
 
 **Returns:**
 ```typescript
-interface GitRepositoryInfo {
-  isRepository: boolean;           // Whether directory is a git repository
-  rootPath: string;                // Absolute path to repository root
-  gitDir: string;                  // Path to .git directory
-  workTree: string;                // Working tree path
-  isBare: boolean;                 // Whether repository is bare
-  isWorktree: boolean;             // Whether this is a worktree
-  worktreeInfo?: GitWorktreeInfo;  // Worktree details if applicable
-}
-
-interface GitWorktreeInfo {
-  mainRepoPath: string;            // Path to main repository
-  branch: string;                  // Associated branch
-  head: string;                    // Current HEAD commit
-  isDetached: boolean;             // Whether HEAD is detached
-}
+// Uses shared GitRepositoryValidation interface from shared/types.ts
+// Extends ValidationResult with git-specific validation fields:
+// - isGitRepository: boolean
+// - hasRemoteOrigin: boolean  
+// - isGitHubRepository: boolean
+// See shared/types.ts for complete interface definition
 ```
 
 **Behavior:**
