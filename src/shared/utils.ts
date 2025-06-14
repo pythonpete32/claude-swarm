@@ -28,4 +28,3 @@ export function safeJsonParse<T>(json: string): T | null {
     return null;
   }
 }
-

@@ -10,6 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 2. always THINK between tool calls, dont cheap out on the reasoning budget.
 3. Noone likes a yes man! if the user is asking you to do something that dosnt make sense or can be done better, give them the best alternatives
 
+
 ## Git Workflow
 
 - Use conventional commits for all commit messages
@@ -19,6 +20,21 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Example: `fix(setup): resolve GitHub project linking issues`
 
 
+## Style Guidelines
 
+### Filename sanitisation
 
+#### ❌ Wrong
+
+```js
+const INVALID_CHARS = /[<>:"|?*\x00-\x1f]/g;   // fails Biome rule
+const safe = raw.replace(INVALID_CHARS, "");
+```
+
+#### ✅ Correct
+
+```js
+const INVALID_CHARS = /[<>:"|?*\p{Cc}]/gu;     // \p{Cc} = all control chars
+const safe = raw.replace(INVALID_CHARS, "");
+```
 
