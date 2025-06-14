@@ -1,0 +1,5 @@
+{
+  "name": "test-command",
+  "description": "Test command for file operations testing",
+  "command": "echo 'Test command executed'"
+}

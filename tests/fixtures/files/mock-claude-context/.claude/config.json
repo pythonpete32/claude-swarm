@@ -1,0 +1,8 @@
+{
+  "testConfig": true,
+  "environment": "test",
+  "features": {
+    "fileOperations": true,
+    "contextManagement": true
+  }
+}

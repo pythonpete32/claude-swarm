@@ -17,10 +17,10 @@ const execAsync = promisify(exec);
 
 /**
  * Extended Git repository information with validation state.
- * 
+ *
  * Extends the base RepositoryInfo with additional runtime validation
  * and state information specific to git operations.
- * 
+ *
  * @group Core Modules
  */
 export interface GitRepository extends RepositoryInfo {
@@ -38,10 +38,10 @@ export interface GitRepository extends RepositoryInfo {
 
 /**
  * Git remote repository information.
- * 
+ *
  * Represents a configured git remote with its name, URL, and operation type.
  * Remotes can be configured for both fetch and push operations.
- * 
+ *
  * @group Core Modules
  */
 export interface GitRemote {
@@ -55,10 +55,10 @@ export interface GitRemote {
 
 /**
  * Git diff analysis results.
- * 
+ *
  * Contains comprehensive information about changes between two git references,
  * including file-level changes and summary statistics.
- * 
+ *
  * @group Core Modules
  */
 export interface GitDiff {
@@ -76,10 +76,10 @@ export interface GitDiff {
 
 /**
  * Individual file change information within a git diff.
- * 
+ *
  * Represents changes to a single file, including the type of change,
  * line count statistics, and path information.
- * 
+ *
  * @group Core Modules
  */
 export interface GitFileChange {
@@ -97,10 +97,10 @@ export interface GitFileChange {
 
 /**
  * Execution context for git command operations.
- * 
+ *
  * Provides configuration and environment information needed
  * to execute git commands safely and consistently.
- * 
+ *
  * @group Core Modules
  */
 export interface GitContext {
@@ -114,14 +114,14 @@ export interface GitContext {
 
 /**
  * Interface for filesystem operations to enable dependency injection.
- * 
+ *
  * Abstracts filesystem access to allow for mocking in tests
  * and alternative implementations in different environments.
- * 
+ *
  * @group Core Modules
  */
 export interface FileSystemInterface {
-  /** 
+  /**
    * Check if a file or directory exists and is accessible.
    * @param path - Absolute path to check
    * @throws Error if path doesn't exist or is not accessible
@@ -131,10 +131,10 @@ export interface FileSystemInterface {
 
 /**
  * Git command executor interface for dependency injection.
- * 
+ *
  * Abstracts git command execution to allow for mocking in tests
  * and alternative implementations for different environments.
- * 
+ *
  * @group Core Modules
  */
 export interface GitCommandExecutor {
@@ -205,22 +205,22 @@ const defaultFileSystem = new DefaultFileSystem();
 
 /**
  * Validate that a directory is a valid Git repository.
- * 
+ *
  * Performs comprehensive validation of a git repository, including:
  * - Directory existence and accessibility
  * - Git repository structure validation
  * - Current branch and commit information
  * - Working tree status analysis
  * - Remote configuration parsing
- * 
+ *
  * @param repositoryPath - Absolute path to the repository directory
  * @param executor - Git command executor (injectable for testing)
  * @param fileSystem - Filesystem interface (injectable for testing)
  * @returns Promise resolving to comprehensive repository information
- * 
+ *
  * @throws {GitError} When repository is invalid or inaccessible
  * @throws {GitError} When git commands fail during validation
- * 
+ *
  * @example
  * ```typescript
  * const repo = await validateRepository('/path/to/repo');
@@ -228,7 +228,7 @@ const defaultFileSystem = new DefaultFileSystem();
  *   console.log(`Repository ${repo.name} is ready for operations`);
  * }
  * ```
- * 
+ *
  * @group Core Modules
  */
 export async function validateRepository(
@@ -441,26 +441,26 @@ export async function getCurrentBranch(
 
 /**
  * Parse Git remote URL to extract repository information.
- * 
+ *
  * Extracts owner and repository name from various Git remote URL formats:
  * - HTTPS: `https://github.com/owner/repo.git`
  * - SSH: `git@github.com:owner/repo.git`
  * - Git protocol: `git://github.com/owner/repo.git`
- * 
+ *
  * @param url - Git remote URL to parse
  * @returns Object with owner and name, or null if URL is unrecognized
- * 
+ *
  * @throws {GitError} When URL format is invalid
- * 
+ *
  * @example
  * ```typescript
  * const info = parseRemoteUrl('git@github.com:owner/repo.git');
  * // Returns: { owner: 'owner', name: 'repo' }
- * 
+ *
  * const httpsInfo = parseRemoteUrl('https://github.com/owner/repo');
  * // Returns: { owner: 'owner', name: 'repo' }
  * ```
- * 
+ *
  * @group Core Modules
  */
 export function parseRemoteUrl(url: string): { owner: string; name: string } | null {
