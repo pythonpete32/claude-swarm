@@ -62,6 +62,11 @@ export const ERROR_CODES = {
   FILE_INVALID_FORMAT: "FILE_INVALID_FORMAT",
   FILE_OPERATION_FAILED: "FILE_OPERATION_FAILED",
   FILE_ALREADY_EXISTS: "FILE_ALREADY_EXISTS",
+  FILE_COPY_FAILED: "FILE_COPY_FAILED",
+  FILE_INVALID_STRUCTURE: "FILE_INVALID_STRUCTURE",
+  FILE_CLEANUP_FAILED: "FILE_CLEANUP_FAILED",
+  FILE_PARSE_FAILED: "FILE_PARSE_FAILED",
+  FILE_CONTEXT_INCOMPLETE: "FILE_CONTEXT_INCOMPLETE",
 } as const;
 
 export type ErrorCode = keyof typeof ERROR_CODES;
@@ -313,6 +318,14 @@ export class FileError extends SwarmError {
         return "Check the file path and ensure the file exists";
       case ERROR_CODES.FILE_PERMISSION_DENIED:
         return "Check file permissions and ensure you have access";
+      case ERROR_CODES.FILE_COPY_FAILED:
+        return "Ensure source file exists and target directory is writable";
+      case ERROR_CODES.FILE_INVALID_STRUCTURE:
+        return "Verify project structure meets workflow requirements";
+      case ERROR_CODES.FILE_CONTEXT_INCOMPLETE:
+        return "Ensure CLAUDE.md and .claude/ directory are present in source";
+      case ERROR_CODES.FILE_PARSE_FAILED:
+        return "Check file format and content structure";
       default:
         return null;
     }
