@@ -2,12 +2,22 @@
 
 Complete architectural design and implementation guide for migrating bash scripts to TypeScript with Bun runtime.
 
+:::warning[⚠️ Documentation Status]
+**Important:** Large portions of workflow documentation are currently deprecated due to architecture changes. The project has moved from CLI workflows to MCP-based agent orchestration. 
+
+- ❌ **Deprecated**: Old CLI workflow concepts and bash script replacements
+- ✅ **Current**: Three-agent system (Planning, Coding, Review) via [Workflows Orchestration](./09-workflows-orchestration.md)
+- 🚧 **Cleanup Needed**: Navigation links and cross-references throughout these docs need updating
+
+This cleanup will be addressed after core implementation is complete.
+:::
+
 ## Table of Contents
 
 ### 📋 Planning & Architecture
 - [**Architecture Overview**](./01-architecture-overview.md) - High-level system design and principles
 - [**Core Modules Design**](./02-core-modules.md) - Building blocks and reusable operations
-- [**Workflows Design**](./03-workflows.md) - Orchestration sequences and business processes
+- [**Workflows Orchestration**](./09-workflows-orchestration.md) - Agent lifecycle management for three-agent system
 - [**Shared Infrastructure**](./04-shared-infrastructure.md) - Common utilities and types
 
 ### 🔧 Implementation Guides
@@ -18,10 +28,8 @@ Complete architectural design and implementation guide for migrating bash script
 - [**Core Module: Claude**](./modules/core-claude.md) - Claude Code integration
 - [**Core Module: Files**](./modules/core-files.md) - File system operations
 
-### 🚀 Workflow Implementations
-- [**Workflow: Work on Task**](./workflows/work-on-task.md) - Development workflow implementation
-- [**Workflow: Review Task**](./workflows/review-task.md) - Review workflow implementation
-- [**Workflow: Setup Project**](./workflows/setup-project.md) - Project setup workflow
+### 🚀 Agent Orchestration
+- [**Workflows Orchestration**](./09-workflows-orchestration.md) - Agent lifecycle management for Planning, Coding, and Review agents
 
 ### 📚 Developer Resources
 - [**Testing Strategy**](./05-testing-strategy.md) - Comprehensive testing approach
@@ -33,7 +41,7 @@ Complete architectural design and implementation guide for migrating bash script
 
 1. **Start Here**: [Architecture Overview](./01-architecture-overview.md)
 2. **Understand Core**: [Core Modules Design](./02-core-modules.md)
-3. **See Workflows**: [Workflows Design](./03-workflows.md)
+3. **See Workflows**: [Workflows Orchestration](./09-workflows-orchestration.md)
 4. **Pick a Module**: Start with [Worktree Module](./modules/core-worktree.md)
 
 ## Implementation Order
@@ -49,14 +57,12 @@ Complete architectural design and implementation guide for migrating bash script
 6. [Core: tmux](./modules/core-tmux.md) - Session management
 7. [Core: Claude](./modules/core-claude.md) - Claude Code integration
 
-### Phase 3: Workflow Orchestration
-8. [Workflow: Work on Task](./workflows/work-on-task.md) - Development workflow
-9. [Workflow: Review Task](./workflows/review-task.md) - Review workflow  
-10. [Workflow: Setup Project](./workflows/setup-project.md) - Setup workflow
+### Phase 3: Agent Orchestration
+8. [Workflows Orchestration](./09-workflows-orchestration.md) - Three-agent lifecycle management
 
 ### Phase 4: Packaging & Distribution
-11. [Testing Strategy](./05-testing-strategy.md) - Comprehensive testing
-12. [Library Export](./08-library-export.md) - Package for distribution
+9. [Testing Strategy](./05-testing-strategy.md) - Comprehensive testing
+10. [Library Export](./08-library-export.md) - Package for distribution
 
 ## Goals
 

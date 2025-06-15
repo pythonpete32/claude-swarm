@@ -1,0 +1,704 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<prompt>
+  <title>Implement Workflows Package: Agent Lifecycle Orchestration</title>
+  
+  <context>
+    <description>
+      You are implementing the workflows package for Claude Codex, a multi-agent development platform. 
+      This package orchestrates the lifecycle of Coding Agents and Review Agents through composition of core package functions,
+      managing observable state transitions via MCP tool integration and providing complete resource management with automatic cleanup.
+    </description>
+    
+    <architecture_principles>
+      <principle>Composition over implementation - workflows orchestrate existing core functions</principle>
+      <principle>Observable state management - only track verifiable state transitions</principle>
+      <principle>MCP tool integration - state changes via observable tool calls and webhooks</principle>
+      <principle>Dependency injection patterns following core module conventions</principle>
+      <principle>Comprehensive error handling with standardized error codes</principle>
+      <principle>Resource cleanup responsibility - each workflow manages its own lifecycle</principle>
+      <principle>Review cycle management with automatic termination limits</principle>
+    </architecture_principles>
+    
+    <specification_reference>
+      <file>packages/docs/spec/modules/workflows-package.md</file>
+      <description>Complete specification with workflow classes, interfaces, and coordination patterns</description>
+    </specification_reference>
+  </context>
+
+  <requirements>
+    <typescript_standards>
+      <rule>Zero `any` types allowed - all code must be fully typed</rule>
+      <rule>Use strict TypeScript configuration</rule>
+      <rule>Export all type definitions for external use</rule>
+      <rule>Implement proper generic constraints for workflow configurations</rule>
+      <rule>Use composition patterns with dependency injection</rule>
+    </typescript_standards>
+    
+    <workflow_implementation>
+      <approach>Agent lifecycle orchestration through core function composition</approach>
+      <state_management>Observable state transitions only (MCP tools, webhooks, resource events)</state_management>
+      <coordination>MCP server spawns workflows, workflows manage own lifecycle and cleanup</coordination>
+      <review_cycles>Parent-child tracking with automatic termination after max review limit</review_cycles>
+      <error_recovery>Comprehensive cleanup procedures for failed workflows</error_recovery>
+    </workflow_implementation>
+    
+    <testing_requirements>
+      <unit_tests>
+        <coverage>100% function and branch coverage</coverage>
+        <strategy>Mock all core dependencies for isolated testing</strategy>
+        <mocking>Mock database, worktree, tmux, claude, github - NOT the workflow logic</mocking>
+        <framework>Vitest with comprehensive mock setup</framework>
+      </unit_tests>
+      
+      <integration_tests>
+        <strategy>Test workflow coordination with real core module integration</strategy>
+        <scenarios>Coding → Review → Merge cycles, state persistence, cleanup procedures</scenarios>
+        <fixtures>Reusable workflow configurations and mock dependencies</fixtures>
+      </integration_tests>
+      
+      <workflow_testing_strategy>
+        <state_transitions>Test all observable state changes with proper verification</state_transitions>
+        <review_cycles>Test review limit enforcement and parent-child relationships</review_cycles>
+        <error_conditions>Test all failure scenarios with proper cleanup</error_conditions>
+        <resource_management>Test resource allocation and cleanup procedures</resource_management>
+        <mcp_integration>Test MCP tool call handling and webhook processing</mcp_integration>
+      </workflow_testing_strategy>
+      
+      <advanced_testing_features>
+        <concurrent_workflows>Test multiple agent instances running simultaneously</concurrent_workflows>
+        <state_persistence>Test database state management across workflow lifecycles</state_persistence>
+        <cleanup_verification>Verify complete resource cleanup after workflow termination</cleanup_verification>
+        <review_coordination>Test complex review cycles with merge-back and PR creation</review_coordination>
+      </advanced_testing_features>
+    </testing_requirements>
+  </requirements>
+
+  <implementation_tasks>
+    <task id="1" priority="high">
+      <name>Project Setup and Base Interfaces</name>
+      <details>
+        <subtask>Set up package structure in packages/workflows/</subtask>
+        <subtask>Install dependencies: @claude-codex/core (workspace:*)</subtask>
+        <subtask>Install dev dependencies: vitest, @vitest/coverage-v8</subtask>
+        <subtask>Create TypeScript configuration with strict settings</subtask>
+        <subtask>Define base workflow interfaces and types</subtask>
+        <subtask>Set up biome.json configuration</subtask>
+      </details>
+      <code_example>
+        ```typescript
+        // Base workflow interface
+        export interface BaseWorkflow<TConfig, TState> {
+          readonly type: WorkflowType;
+          
+          execute(config: TConfig): Promise<WorkflowExecution<TState>>;
+          terminate(instanceId: string, reason?: string): Promise<void>;
+          getState(instanceId: string): Promise<TState | null>;
+        }
+
+        export interface WorkflowExecution<TState = any> {
+          id: string;
+          type: WorkflowType;
+          status: ExecutionStatus;
+          currentState: TState;
+          resources: WorkflowResources;
+          config: any;
+          startedAt: Date;
+          updatedAt: Date;
+          terminatedAt?: Date;
+        }
+        ```
+      </code_example>
+    </task>
+
+    <task id="2" priority="high">
+      <name>Coding Agent Workflow Implementation</name>
+      <details>
+        <subtask>Create CodingAgentWorkflow class implementing BaseWorkflow</subtask>
+        <subtask>Implement execute() method with resource allocation</subtask>
+        <subtask>Implement terminate() method with complete cleanup</subtask>
+        <subtask>Implement requestReview() method for review agent spawning</subtask>
+        <subtask>Add review cycle tracking and limit enforcement</subtask>
+        <subtask>Create CodingAgentConfig and CodingAgentState interfaces</subtask>
+      </details>
+      <code_example>
+        ```typescript
+        export class CodingAgentWorkflow implements BaseWorkflow<CodingAgentConfig, CodingAgentState> {
+          readonly type = 'coding' as const;
+          
+          constructor(private deps: WorkflowDependencies) {}
+          
+          async execute(config: CodingAgentConfig): Promise<WorkflowExecution<CodingAgentState>> {
+            const instanceId = this.generateInstanceId(config);
+            
+            try {
+              // 1. Create database record
+              await this.deps.database.createInstance({
+                id: instanceId,
+                type: 'coding',
+                status: 'started',
+                // ... configuration data
+              });
+              
+              // 2. Allocate resources
+              const worktree = await this.deps.worktree.createWorktree({
+                name: instanceId,
+                branch: config.targetBranch || `work/${instanceId}`,
+                baseBranch: config.baseBranch
+              });
+              
+              const tmuxSession = await this.deps.tmux.createTmuxSession({
+                name: instanceId,
+                workingDirectory: worktree.path
+              });
+              
+              const claudeSession = await this.deps.claude.launchClaudeSession({
+                workspacePath: worktree.path,
+                environmentVars: { INSTANCE_ID: instanceId }
+              });
+              
+              // 3. Update database with resources
+              await this.deps.database.updateInstance(instanceId, {
+                status: 'working',
+                worktree_path: worktree.path,
+                tmux_session: tmuxSession.name,
+                branch_name: worktree.branch
+              });
+              
+              return {
+                id: instanceId,
+                type: 'coding',
+                status: 'working',
+                // ... complete execution object
+              };
+              
+            } catch (error) {
+              await this.handleWorkflowError(instanceId, error);
+              throw error;
+            }
+          }
+        }
+        ```
+      </code_example>
+    </task>
+
+    <task id="3" priority="high">
+      <name>Review Agent Workflow Implementation</name>
+      <details>
+        <subtask>Create ReviewAgentWorkflow class implementing BaseWorkflow</subtask>
+        <subtask>Implement execute() method with worktree forking</subtask>
+        <subtask>Implement mergeBack() method for coding agent feedback</subtask>
+        <subtask>Implement pushToGithub() method for direct PR creation</subtask>
+        <subtask>Add automatic cleanup after decision implementation</subtask>
+        <subtask>Create ReviewAgentConfig and ReviewAgentState interfaces</subtask>
+      </details>
+      <code_example>
+        ```typescript
+        export class ReviewAgentWorkflow implements BaseWorkflow<ReviewAgentConfig, ReviewAgentState> {
+          readonly type = 'review' as const;
+          
+          async execute(config: ReviewAgentConfig): Promise<WorkflowExecution<ReviewAgentState>> {
+            // 1. Validate parent instance
+            const parentInstance = await this.deps.database.getInstance(config.parentInstanceId);
+            if (!parentInstance || parentInstance.status !== 'review_requested') {
+              throw new WorkflowError('WORKFLOW_PARENT_INVALID_STATE');
+            }
+            
+            // 2. Create forked worktree from parent
+            const reviewInstanceId = this.generateInstanceId(config);
+            const parentWorktree = parentInstance.worktree_path;
+            
+            const reviewWorktree = await this.deps.worktree.createWorktree({
+              name: reviewInstanceId,
+              branch: `review/${reviewInstanceId}`,
+              sourceBranch: parentInstance.branch_name,
+              forkFrom: parentWorktree
+            });
+            
+            // 3. Launch review-focused Claude session
+            const claudeSession = await this.deps.claude.launchClaudeSession({
+              workspacePath: reviewWorktree.path,
+              systemPrompt: config.reviewPrompt,
+              environmentVars: { 
+                INSTANCE_ID: reviewInstanceId,
+                PARENT_INSTANCE_ID: config.parentInstanceId,
+                REVIEW_MODE: 'true'
+              }
+            });
+            
+            // 4. Create relationship tracking
+            await this.deps.database.createRelationship({
+              parent_instance: config.parentInstanceId,
+              child_instance: reviewInstanceId,
+              relationship_type: 'spawned_review'
+            });
+            
+            return {
+              id: reviewInstanceId,
+              type: 'review',
+              status: 'working',
+              // ... complete execution object
+            };
+          }
+        }
+        ```
+      </code_example>
+    </task>
+
+    <task id="4" priority="high">
+      <name>MCP Tool Integration and State Management</name>
+      <details>
+        <subtask>Create MCP tool handlers for workflow state transitions</subtask>
+        <subtask>Implement request_review tool handler</subtask>
+        <subtask>Implement create_pr tool handler</subtask>
+        <subtask>Implement merge_back tool handler</subtask>
+        <subtask>Implement push_to_github tool handler</subtask>
+        <subtask>Add GitHub webhook handlers for external state updates</subtask>
+      </details>
+      <code_example>
+        ```typescript
+        // MCP tool handlers for observable state transitions
+        export class WorkflowMCPHandlers {
+          constructor(
+            private codingWorkflow: CodingAgentWorkflow,
+            private reviewWorkflow: ReviewAgentWorkflow
+          ) {}
+          
+          async handleRequestReview(instanceId: string): Promise<string> {
+            // Validate coding agent can request review
+            const reviewInstanceId = await this.codingWorkflow.requestReview(instanceId);
+            
+            // Spawn review agent
+            const reviewConfig: ReviewAgentConfig = {
+              parentInstanceId: instanceId,
+              reviewPrompt: await this.getReviewPrompt(instanceId)
+            };
+            
+            await this.reviewWorkflow.execute(reviewConfig);
+            return reviewInstanceId;
+          }
+          
+          async handleMergeBack(reviewInstanceId: string, feedback?: string): Promise<void> {
+            await this.reviewWorkflow.mergeBack(reviewInstanceId, feedback);
+          }
+          
+          async handlePushToGithub(reviewInstanceId: string, prConfig: PullRequestConfig): Promise<string> {
+            return await this.reviewWorkflow.pushToGithub(reviewInstanceId, prConfig);
+          }
+        }
+        ```
+      </code_example>
+    </task>
+
+    <task id="5" priority="high">
+      <name>Error Handling and Cleanup Systems</name>
+      <details>
+        <subtask>Implement WorkflowError class extending SwarmError</subtask>
+        <subtask>Create comprehensive error codes for all failure scenarios</subtask>
+        <subtask>Implement cleanup procedures for each workflow type</subtask>
+        <subtask>Add error recovery mechanisms with proper state updates</subtask>
+        <subtask>Test all error conditions and cleanup procedures</subtask>
+      </details>
+      <code_example>
+        ```typescript
+        export class WorkflowError extends SwarmError {
+          constructor(code: string, message: string, details: Record<string, unknown> = {}) {
+            super(code, "workflow", message, details);
+          }
+        }
+
+        export const WORKFLOW_ERROR_CODES = {
+          WORKFLOW_INVALID_CONFIGURATION: "WORKFLOW_INVALID_CONFIGURATION",
+          WORKFLOW_RESOURCE_ALLOCATION_FAILED: "WORKFLOW_RESOURCE_ALLOCATION_FAILED",
+          WORKFLOW_MAX_REVIEWS_EXCEEDED: "WORKFLOW_MAX_REVIEWS_EXCEEDED",
+          WORKFLOW_PARENT_NOT_FOUND: "WORKFLOW_PARENT_NOT_FOUND",
+          WORKFLOW_CLEANUP_FAILED: "WORKFLOW_CLEANUP_FAILED"
+        } as const;
+
+        // Cleanup implementation
+        private async cleanupResources(instanceId: string): Promise<void> {
+          try {
+            const instance = await this.deps.database.getInstance(instanceId);
+            if (!instance) return;
+            
+            // Cleanup in reverse order of creation
+            if (instance.claude_session_id) {
+              await this.deps.claude.terminateClaudeSession(instance.claude_session_id);
+            }
+            
+            if (instance.tmux_session) {
+              await this.deps.tmux.killSession(instance.tmux_session);
+            }
+            
+            if (instance.worktree_path) {
+              await this.deps.worktree.removeWorktree(instance.worktree_path);
+            }
+            
+          } catch (cleanupError) {
+            console.error(`Cleanup failed for ${instanceId}:`, cleanupError);
+            throw new WorkflowError('WORKFLOW_CLEANUP_FAILED', 
+              `Failed to cleanup resources for ${instanceId}`, { cleanupError });
+          }
+        }
+        ```
+      </code_example>
+    </task>
+
+    <task id="6" priority="high">
+      <name>Comprehensive Unit Test Suite</name>
+      <details>
+        <subtask>Set up Vitest configuration with mock infrastructure</subtask>
+        <subtask>Create mock implementations for all core dependencies</subtask>
+        <subtask>Test CodingAgentWorkflow lifecycle completely</subtask>
+        <subtask>Test ReviewAgentWorkflow lifecycle completely</subtask>
+        <subtask>Test review cycle limits and termination</subtask>
+        <subtask>Test all error conditions with proper cleanup verification</subtask>
+        <subtask>Achieve 100% code coverage</subtask>
+      </details>
+      <testing_strategy>
+        <mock_setup>
+          ```typescript
+          // Mock workflow dependencies for isolated testing
+          export const createMockWorkflowDependencies = (): WorkflowDependencies => ({
+            database: {
+              createInstance: vi.fn().mockResolvedValue('work-123-a1'),
+              updateInstance: vi.fn().mockResolvedValue(undefined),
+              getInstance: vi.fn().mockResolvedValue(mockInstance),
+              createRelationship: vi.fn().mockResolvedValue(undefined),
+              getInstanceRelationships: vi.fn().mockResolvedValue([])
+            },
+            worktree: {
+              createWorktree: vi.fn().mockResolvedValue({ 
+                path: '/mock/worktree', 
+                branch: 'work-123' 
+              }),
+              removeWorktree: vi.fn().mockResolvedValue(true)
+            },
+            tmux: {
+              createTmuxSession: vi.fn().mockResolvedValue({ name: 'work-123-a1' }),
+              killSession: vi.fn().mockResolvedValue(true)
+            },
+            claude: {
+              launchClaudeSession: vi.fn().mockResolvedValue({ sessionId: 'claude-123' }),
+              terminateClaudeSession: vi.fn().mockResolvedValue(true)
+            },
+            github: {
+              createPullRequest: vi.fn().mockResolvedValue('https://github.com/repo/pull/123')
+            }
+          });
+          ```
+        </mock_setup>
+        
+        <test_examples>
+          ```typescript
+          describe('CodingAgentWorkflow', () => {
+            let workflow: CodingAgentWorkflow;
+            let mockDeps: WorkflowDependencies;
+            
+            beforeEach(() => {
+              mockDeps = createMockWorkflowDependencies();
+              workflow = new CodingAgentWorkflow(mockDeps);
+            });
+            
+            it('should create coding agent with proper resource allocation', async () => {
+              const config: CodingAgentConfig = {
+                repository: mockRepositoryInfo,
+                baseBranch: 'main',
+                requireReview: false,
+                maxReviews: 3
+              };
+              
+              const execution = await workflow.execute(config);
+              
+              expect(execution.type).toBe('coding');
+              expect(execution.status).toBe('working');
+              
+              // Verify all resources were created
+              expect(mockDeps.database.createInstance).toHaveBeenCalled();
+              expect(mockDeps.worktree.createWorktree).toHaveBeenCalled();
+              expect(mockDeps.tmux.createTmuxSession).toHaveBeenCalled();
+              expect(mockDeps.claude.launchClaudeSession).toHaveBeenCalled();
+            });
+            
+            it('should enforce review cycle limits', async () => {
+              // Mock existing relationships showing max reviews reached
+              mockDeps.database.getInstanceRelationships.mockResolvedValue([
+                { relationship_type: 'spawned_review' },
+                { relationship_type: 'spawned_review' },
+                { relationship_type: 'spawned_review' }
+              ]);
+              
+              await expect(workflow.requestReview('work-123-a1'))
+                .rejects.toThrow('WORKFLOW_MAX_REVIEWS_EXCEEDED');
+            });
+            
+            it('should cleanup resources on termination', async () => {
+              await workflow.terminate('work-123-a1', 'Test termination');
+              
+              expect(mockDeps.claude.terminateClaudeSession).toHaveBeenCalled();
+              expect(mockDeps.tmux.killSession).toHaveBeenCalled();
+              expect(mockDeps.worktree.removeWorktree).toHaveBeenCalled();
+              expect(mockDeps.database.updateInstance).toHaveBeenCalledWith(
+                'work-123-a1',
+                expect.objectContaining({ status: 'terminated' })
+              );
+            });
+          });
+          ```
+        </test_examples>
+      </testing_strategy>
+    </task>
+
+    <task id="7" priority="medium">
+      <name>Integration Test Suite</name>
+      <details>
+        <subtask>Create integration tests with workflow coordination</subtask>
+        <subtask>Test complete coding → review → merge cycles</subtask>
+        <subtask>Test complete coding → review → PR cycles</subtask>
+        <subtask>Test concurrent workflow execution</subtask>
+        <subtask>Test state persistence across workflow lifecycles</subtask>
+        <subtask>Test complex error scenarios and recovery</subtask>
+      </details>
+      <integration_strategy>
+        ```typescript
+        describe('Workflow Integration Tests', () => {
+          let codingWorkflow: CodingAgentWorkflow;
+          let reviewWorkflow: ReviewAgentWorkflow;
+          let mockMCPHandlers: WorkflowMCPHandlers;
+          
+          beforeEach(() => {
+            const integrationDeps = createIntegrationTestDependencies();
+            codingWorkflow = new CodingAgentWorkflow(integrationDeps);
+            reviewWorkflow = new ReviewAgentWorkflow(integrationDeps);
+            mockMCPHandlers = new WorkflowMCPHandlers(codingWorkflow, reviewWorkflow);
+          });
+          
+          it('should coordinate complete coding → review → merge workflow', async () => {
+            // 1. Create coding agent
+            const codingConfig: CodingAgentConfig = {
+              repository: mockRepositoryInfo,
+              baseBranch: 'main',
+              requireReview: true,
+              maxReviews: 3
+            };
+            
+            const codingExecution = await codingWorkflow.execute(codingConfig);
+            expect(codingExecution.status).toBe('working');
+            
+            // 2. Request review (simulates MCP tool call)
+            const reviewInstanceId = await mockMCPHandlers.handleRequestReview(codingExecution.id);
+            expect(reviewInstanceId).toBeDefined();
+            
+            // 3. Review merges back (simulates MCP tool call)
+            await mockMCPHandlers.handleMergeBack(reviewInstanceId, "Code looks good!");
+            
+            // 4. Verify parent state updated
+            const finalState = await codingWorkflow.getState(codingExecution.id);
+            expect(finalState.phase).toBe('working');
+            expect(finalState.reviewCount).toBe(1);
+          });
+          
+          it('should handle review cycle exhaustion', async () => {
+            const codingExecution = await codingWorkflow.execute({
+              repository: mockRepositoryInfo,
+              baseBranch: 'main',
+              requireReview: true,
+              maxReviews: 2
+            });
+            
+            // Exhaust review cycles
+            await mockMCPHandlers.handleRequestReview(codingExecution.id);
+            await mockMCPHandlers.handleMergeBack(reviewInstanceId1, "Try again");
+            
+            await mockMCPHandlers.handleRequestReview(codingExecution.id);
+            await mockMCPHandlers.handleMergeBack(reviewInstanceId2, "Still not right");
+            
+            // Third review should fail
+            await expect(mockMCPHandlers.handleRequestReview(codingExecution.id))
+              .rejects.toThrow('WORKFLOW_MAX_REVIEWS_EXCEEDED');
+          });
+        });
+        ```
+      </integration_strategy>
+    </task>
+
+    <task id="8" priority="medium">
+      <name>Dependency Injection and Configuration</name>
+      <details>
+        <subtask>Create WorkflowDependencies interface</subtask>
+        <subtask>Implement default dependencies for production use</subtask>
+        <subtask>Create workflow configuration management</subtask>
+        <subtask>Add configuration validation and defaults</subtask>
+        <subtask>Export public API with proper typing</subtask>
+      </details>
+    </task>
+
+    <task id="9" priority="low">
+      <name>Documentation and Performance</name>
+      <details>
+        <subtask>Create comprehensive API documentation</subtask>
+        <subtask>Add usage examples for each workflow type</subtask>
+        <subtask>Document MCP integration patterns</subtask>
+        <subtask>Add performance monitoring for workflow operations</subtask>
+        <subtask>Create troubleshooting guide</subtask>
+      </details>
+    </task>
+  </implementation_tasks>
+
+  <file_structure>
+    <structure>
+      ```
+      packages/workflows/
+      ├── src/
+      │   ├── workflows/                  # Agent workflow implementations
+      │   │   ├── coding-agent-workflow.ts
+      │   │   ├── review-agent-workflow.ts
+      │   │   └── base-workflow.ts
+      │   ├── state/                      # State management
+      │   │   ├── workflow-state-manager.ts
+      │   │   └── mcp-handlers.ts
+      │   ├── types/                      # Workflow-specific types
+      │   │   ├── workflow-config.ts
+      │   │   ├── workflow-execution.ts
+      │   │   ├── agent-states.ts
+      │   │   └── index.ts
+      │   ├── errors/                     # Error handling
+      │   │   ├── workflow-errors.ts
+      │   │   └── index.ts
+      │   └── index.ts                    # Public API exports
+      ├── tests/
+      │   ├── unit/                       # Individual workflow tests
+      │   │   ├── coding-workflow.test.ts
+      │   │   ├── review-workflow.test.ts
+      │   │   └── mcp-handlers.test.ts
+      │   ├── integration/                # Workflow coordination tests
+      │   │   ├── workflow-coordination.test.ts
+      │   │   └── state-management.test.ts
+      │   └── fixtures/                   # Test data and mocks
+      │       ├── mock-dependencies.ts
+      │       └── test-data.ts
+      ├── package.json                    # Dependencies and scripts
+      ├── tsconfig.json                   # TypeScript configuration
+      ├── biome.json                      # Code formatting and linting
+      └── vitest.config.ts               # Test configuration
+      ```
+    </structure>
+  </file_structure>
+
+  <testing_infrastructure>
+    <vitest_config>
+      ```typescript
+      // vitest.config.ts
+      export default defineConfig({
+        test: {
+          environment: 'node',
+          globals: true,
+          coverage: {
+            provider: 'v8',
+            reporter: ['text', 'html'],
+            thresholds: {
+              functions: 100,
+              branches: 100,
+              lines: 100,
+              statements: 100
+            }
+          },
+          setupFiles: ['./tests/fixtures/setup.ts']
+        }
+      });
+      ```
+    </vitest_config>
+    
+    <mock_utilities>
+      ```typescript
+      // Mock utilities for workflow testing
+      export function createMockWorkflowDependencies(): WorkflowDependencies {
+        return {
+          database: {
+            createInstance: vi.fn(),
+            updateInstance: vi.fn(),
+            getInstance: vi.fn(),
+            createRelationship: vi.fn(),
+            getInstanceRelationships: vi.fn()
+          },
+          worktree: {
+            createWorktree: vi.fn(),
+            removeWorktree: vi.fn()
+          },
+          tmux: {
+            createTmuxSession: vi.fn(),
+            killSession: vi.fn()
+          },
+          claude: {
+            launchClaudeSession: vi.fn(),
+            terminateClaudeSession: vi.fn()
+          },
+          github: {
+            createPullRequest: vi.fn()
+          }
+        };
+      }
+      
+      export function generateTestCodingConfig(overrides?: Partial<CodingAgentConfig>): CodingAgentConfig {
+        return {
+          repository: { owner: 'test', name: 'repo', path: '/test/repo' },
+          baseBranch: 'main',
+          requireReview: false,
+          maxReviews: 3,
+          ...overrides
+        };
+      }
+      ```
+    </mock_utilities>
+  </testing_infrastructure>
+
+  <quality_gates>
+    <gate name="type_safety">
+      <description>All code must compile with strict TypeScript settings</description>
+      <validation>Run `bun run typecheck` without errors</validation>
+    </gate>
+    
+    <gate name="test_coverage">
+      <description>100% test coverage for all workflow functionality</description>
+      <validation>Run `bun run test:run` and verify 100% coverage</validation>
+    </gate>
+    
+    <gate name="integration_tests">
+      <description>All workflow coordination tests must pass</description>
+      <validation>Complete workflow lifecycles work correctly</validation>
+    </gate>
+    
+    <gate name="linting">
+      <description>Code must pass all linting rules</description>
+      <validation>Run `bun run lint:fix` without errors</validation>
+    </gate>
+    
+    <gate name="dependency_isolation">
+      <description>All core dependencies must be properly mocked in tests</description>
+      <validation>Unit tests should not require actual core module implementations</validation>
+    </gate>
+  </quality_gates>
+
+  <completion_criteria>
+    <criteria>All TypeScript interfaces implemented with zero `any` types</criteria>
+    <criteria>Complete CodingAgentWorkflow with resource management and cleanup</criteria>
+    <criteria>Complete ReviewAgentWorkflow with merge/PR decision implementation</criteria>
+    <criteria>MCP tool integration for all observable state transitions</criteria>
+    <criteria>Review cycle management with automatic limit enforcement</criteria>
+    <criteria>100% unit test coverage with comprehensive mocking</criteria>
+    <criteria>Integration tests covering complete workflow coordination</criteria>
+    <criteria>Error handling with standardized error codes and cleanup procedures</criteria>
+    <criteria>Dependency injection system for production and testing</criteria>
+    <criteria>Documentation with usage examples and MCP integration patterns</criteria>
+  </completion_criteria>
+
+  <deliverables>
+    <deliverable>Fully implemented workflows package in packages/workflows/</deliverable>
+    <deliverable>CodingAgentWorkflow with complete lifecycle management</deliverable>
+    <deliverable>ReviewAgentWorkflow with decision implementation and cleanup</deliverable>
+    <deliverable>MCP tool handlers for observable state transitions</deliverable>
+    <deliverable>Comprehensive test suites (unit + integration)</deliverable>
+    <deliverable>Error handling system with cleanup procedures</deliverable>
+    <deliverable>Type definitions and public API exports</deliverable>
+    <deliverable>Documentation with usage examples and integration guides</deliverable>
+  </deliverables>
+</prompt>
