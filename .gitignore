@@ -6,5 +6,6 @@ coverage/*
 docs/*
 .DS_Store
 .env
+Excalidraw.log
 excalidraw.log
 **/node_modules/.vite/vitest/**/results.json

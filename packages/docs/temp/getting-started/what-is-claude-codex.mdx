@@ -1,0 +1,121 @@
+# What is Claude Codex?
+
+*Local AI Agent Orchestration Platform for Software Development*
+
+## Core Concept: The Developer as Orchestrator
+
+Claude Codex fundamentally reimagines the role of the software developer. Rather than writing code directly, developers become **orchestrators** of AI agents—essentially functioning as CTOs of their own virtual development teams. The platform provides the infrastructure for managing these agent teams using familiar software development patterns.
+
+> **Key Insight**: We're building software for humans to manage AI development teams, not just another AI coding assistant.
+
+## The Paradigm Shift
+
+### From Code Writer to Team Leader
+
+Traditional development:
+- Developer writes code line by line
+- Manual task coordination
+- Limited parallel work capability
+- Human bottleneck on implementation
+
+Claude Codex development:
+- Developer orchestrates AI agent teams
+- Automated task distribution and coordination
+- True parallel development streams
+- Human focus on architecture and strategy
+
+### The New Developer Role
+
+In this paradigm, developers transition from **code writers** to **system architects**:
+- Define project vision and requirements
+- Break down complex problems into manageable issues
+- Coordinate agent activities through GitHub workflows
+- Review and integrate agent outputs
+- Make strategic technical decisions
+
+*Think of this as "GitHub Codespaces meets ChatGPT Canvas"—but running locally with background agents.*
+
+## Architecture Philosophy: Agent-First Design
+
+### Multi-Agent Coordination Model
+
+The system implements a **transparent collaboration model** where agents work like human developers:
+
+- **GitHub-Native Communication**: All agent coordination happens through GitHub (issues, PRs, comments)
+- **No Private Channels**: No hidden agent-to-agent communication
+- **MCP Integration**: Agents can request reviews from other agents through structured protocols
+- **Specialized Roles**: Different agent types with distinct responsibilities
+
+### Three Core Agent Types
+
+1. **Planning Agents**: Architectural design and project coordination
+2. **Coding Agents**: Implementation and development work
+3. **Review Agents**: Quality assurance and validation
+
+## User Experience & Workflow
+
+### Hybrid CLI/Web Approach
+
+1. **Local Installation**: Application installs on your machine
+2. **Server Launch**: Command line spawns local server
+3. **Web Interface**: Primary interaction through web dashboard
+4. **Project Setup**:
+   - Create new project (auto-initializes git, GitHub repo, issue templates)
+   - Or attach to existing GitHub project
+   - GitHub integration recommended but not mandatory
+
+### Strategic Command Center
+
+The web application serves as your **orchestration headquarters**:
+- Monitor multiple agent activities simultaneously
+- Coordinate parallel development streams
+- Engage in architectural discussions with Planning Agents
+- Review and approve agent outputs
+- Track project progress across all workstreams
+
+## Long-Term Vision: Scaling with AI Progress
+
+The platform is designed to **scale automatically** as AI models improve:
+
+**Current State**: Agents can sometimes one-shot a GitHub issue to PR (not reliably, but it's possible)
+
+**Future State**: As models improve, success rates increase without platform changes
+
+### The Transformation of Software Development
+
+This represents a fundamental shift in how software gets built:
+
+1. **Today**: Basic coding skills becoming less valuable as AI handles implementation
+2. **Tomorrow**: Developers manage "companies" of AI software developers  
+3. **Key Value**: The platform helps developers **abstract themselves upward** into architectural and strategic roles
+
+*The system scales not through feature additions, but through improvements in underlying model capabilities.*
+
+## Why Local Development?
+
+### Privacy & Control
+- Code never leaves your environment
+- Full control over agent configurations
+- No vendor lock-in or external dependencies
+
+### Performance & Reliability
+- No network latency for agent operations
+- Direct control over computational resources
+- Offline capability for cached content
+
+### GitHub Integration
+- Deep integration with GitHub's workflow primitives
+- Uses standard development patterns (issues, PRs, reviews)
+- Compatible with existing team processes
+
+## Comparison with Other Tools
+
+**ChatGPT Codex**: Remote coding companion → Claude Codex: Local agent orchestration platform
+
+**Cursor**: AI-assisted coding → Claude Codex: AI team management
+
+**GitHub Copilot**: Code completion → Claude Codex: Complete development workflow automation
+
+---
+
+*Claude Codex represents a mental model shift for how software developers will work in an AI-augmented future—not as coders, but as orchestrators of intelligent development systems.*

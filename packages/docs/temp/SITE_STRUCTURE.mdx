@@ -1,0 +1,176 @@
+# Claude Codex Documentation Site Structure
+
+*Complete sitemap and file organization*
+
+## Documentation Overview
+
+This documentation serves as both **user-facing documentation** and **implementation blueprint** for Claude Codex, the local AI agent orchestration platform.
+
+## Site Organization
+
+### 📚 **Getting Started** (6 pages)
+- Introduction and platform overview
+- Installation guide for all platforms  
+- Quick start tutorial
+- First project setup walkthrough
+- Prerequisites and system requirements
+
+### 👤 **User Guide** (8 pages)
+- Complete end-user documentation
+- Web interface navigation
+- Instance creation and management
+- Terminal integration guide
+- CLI reference and configuration
+- Best practices and tips
+
+### 🤖 **Agent Types** (6 pages)
+- Overview of the three-agent system
+- Planning Agent capabilities and usage
+- Coding Agent implementation workflow
+- Review Agent quality assurance process
+- Agent lifecycle management
+- Custom prompt configuration
+
+### 🔄 **Workflows** (7 pages)
+- Complete development process flows
+- Development workflow (planning → coding → review)
+- Review and quality assurance processes
+- Planning and architectural workflows
+- Issue management strategies
+- GitHub integration patterns
+- Parallel development coordination
+
+### 🏗️ **Architecture** (8 pages)
+- Technical system design
+- High-level system architecture
+- 4-layer design pattern
+- Agent orchestration mechanisms
+- MCP server implementation
+- Core module documentation
+- Database schema and relationships
+- Technology stack decisions
+
+### 🔌 **API Reference** (7 pages)
+- Complete API documentation
+- Core library functions
+- MCP protocol specifications
+- REST API endpoints
+- WebSocket streaming protocols
+- TypeScript type definitions
+- Comprehensive error code reference
+
+### 💻 **Development** (7 pages)
+- Contributor documentation
+- Development environment setup
+- Monorepo structure and management
+- Contributing guidelines
+- Testing strategies and requirements
+- Coding standards and style guide
+- Release process and versioning
+
+### 🔧 **Troubleshooting** (6 pages)
+- Common issues and solutions
+- Installation problem resolution
+- Agent debugging and performance
+- GitHub integration troubleshooting
+- Performance optimization
+- Debug mode and logging
+
+## File Structure
+
+```
+docs/
+├── README.md                              # Main documentation entry
+├── SUMMARY.md                             # GitBook navigation structure
+├── SITE_STRUCTURE.md                     # This file
+├── getting-started/
+│   ├── what-is-claude-codex.md
+│   ├── installation.md
+│   ├── quick-start.md
+│   ├── first-project.md
+│   └── prerequisites.md
+├── user-guide/
+│   ├── README.md
+│   ├── web-interface.md
+│   ├── creating-instances.md
+│   ├── managing-work.md
+│   ├── terminal-integration.md
+│   ├── cli-reference.md
+│   ├── configuration.md
+│   └── best-practices.md
+├── agents/
+│   ├── README.md
+│   ├── planning-agents.md
+│   ├── coding-agents.md
+│   ├── review-agents.md
+│   ├── agent-lifecycle.md
+│   └── custom-prompts.md
+├── workflows/
+│   ├── README.md
+│   ├── development-workflow.md
+│   ├── review-workflow.md
+│   ├── planning-workflow.md
+│   ├── issue-management.md
+│   ├── github-integration.md
+│   └── parallel-development.md
+├── architecture/
+│   ├── README.md
+│   ├── system-architecture.md
+│   ├── 4-layer-design.md
+│   ├── agent-orchestration.md
+│   ├── mcp-server.md
+│   ├── core-modules.md
+│   ├── database-schema.md
+│   └── technology-stack.md
+├── api/
+│   ├── README.md
+│   ├── core-api.md
+│   ├── mcp-api.md
+│   ├── rest-api.md
+│   ├── websocket-api.md
+│   ├── types.md
+│   └── error-codes.md
+├── development/
+│   ├── README.md
+│   ├── contributing.md
+│   ├── development-setup.md
+│   ├── testing.md
+│   ├── coding-standards.md
+│   ├── release-process.md
+│   └── monorepo-structure.md
+└── troubleshooting/
+    ├── common-issues.md
+    ├── installation.md
+    ├── agent-issues.md
+    ├── github-integration.md
+    ├── performance.md
+    └── debugging.md
+```
+
+## Content Guidelines
+
+### User-Focused Sections
+- Clear, step-by-step instructions
+- Practical examples and use cases
+- Troubleshooting and problem resolution
+- Visual diagrams and screenshots
+
+### Developer-Focused Sections  
+- Technical implementation details
+- Code examples and API references
+- Architecture patterns and decisions
+- Testing and quality assurance
+
+### Dual-Purpose Sections
+- Overview and conceptual explanations
+- Configuration and setup guides
+- Integration patterns and workflows
+- Best practices and recommendations
+
+## Next Steps
+
+1. **Content Population**: Fill out each markdown file with detailed content
+2. **Visual Assets**: Create diagrams, screenshots, and interactive elements
+3. **Code Examples**: Add practical code samples throughout
+4. **Cross-References**: Link related sections and maintain navigation
+5. **Validation**: Test all procedures and examples for accuracy

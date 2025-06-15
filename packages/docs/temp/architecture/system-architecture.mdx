@@ -1,0 +1,205 @@
+# System Architecture
+
+*High-level system design and component interactions*
+
+## Architecture Overview
+
+Claude Codex implements a **local-first, agent-orchestration platform** that transforms individual AI capabilities into coordinated development teams.
+
+## Core Design Principles
+
+### User as Orchestrator
+*The human developer serves as the central coordinator, not a passive observer*
+
+### GitHub-Native Coordination
+*All agent communication flows through standard GitHub primitives*
+
+### Stateless Agent Design
+*Agents operate in isolation without cross-session context*
+
+### Local Privacy and Performance
+*All processing happens locally for data privacy and performance*
+
+## System Components
+
+### Web Interface Layer
+- React-based dashboard for visual management
+- Real-time terminal streaming with xterm.js
+- Instance lifecycle management UI
+
+### MCP Server Layer
+- Model Context Protocol implementation
+- Agent coordination and status management
+- Bridge between UI and core functionality
+
+### Core Module Layer
+- git: Version control operations
+- worktree: Isolated workspace management
+- github: GitHub API integration
+- tmux: Terminal session management
+- claude: Claude Code integration
+- files: File system operations
+
+### Data Layer
+- SQLite for instance and relationship persistence
+- GitHub as external state store
+- Local filesystem for worktree management
+
+## Agent Architecture
+
+### Three-Agent System
+
+**1. Planning Agents**
+- **Role**: Architectural design and project coordination
+- **Capabilities**: Break down complex projects, manage dependencies, engage in design discussions
+- **Communication**: Conversational interface with structured outputs
+
+**2. Coding Agents**
+- **Role**: Implementation and development ("grunt work")
+- **Process**: Transform GitHub issues with clear instructions into code implementations
+- **Environment**: Isolated worktree sessions with dedicated terminals
+
+**3. Review Agents**
+- **Role**: Quality guard and verification layer
+- **Decision Logic**: Binary pass/fail with detailed feedback
+- **Actions**: Pass → Create PR | Fail → Merge feedback + cleanup
+
+### Agent Lifecycle
+
+```
+1. Agent Spawn
+   ↓
+2. Context Acquisition (GitHub issue, project state, CLAUDE.md)
+   ↓
+3. Work Execution (implementation, planning, or review)
+   ↓
+4. Output Generation (code, PRs, feedback)
+   ↓
+5. Cleanup & Termination (stateless design)
+```
+
+### Communication Patterns
+
+**Local Coordination (MCP)**:
+- Agent-to-agent review requests
+- Status updates to UI
+- Resource coordination
+
+**GitHub Integration**:
+- Issues as work units
+- PRs as delivery mechanisms
+- Comments as communication channels
+- Labels/milestones for state tracking
+
+## System Boundaries & Scope
+
+### Single-User Architecture
+- **Individual developers** managing local AI agent teams
+- **Not multi-user**: Teams consist of agents, not multiple humans
+- **Local-first**: All computation happens on user's machine
+
+### Connectivity Requirements
+- **Primary dependency**: Claude Code (requires Anthropic API)
+- **Internet required** for full functionality
+- **Offline capability**: Cached tasks, database content, project state
+
+### Opinionated Integration
+- **Custom slash commands** integrated into projects
+- **Specific workflows** built on Claude Code foundation
+- **Structured interaction patterns** between agent types
+
+## Data Flow Architecture
+
+### Primary Flow: Issue → Code → PR
+
+```
+1. Human creates GitHub issue
+   ↓
+2. Planning Agent (optional) breaks down into sub-issues
+   ↓
+3. Coding Agent claims issue
+   ↓
+4. Worktree creation + tmux session spawn
+   ↓
+5. Agent analyzes issue + project context
+   ↓
+6. Implementation in isolated environment
+   ↓
+7. Review Agent validation
+   ↓
+8. PR creation or feedback loop
+   ↓
+9. Human review + merge
+   ↓
+10. Cleanup and state update
+```
+
+### MCP Server Role
+
+**Thin Wrapper Pattern**:
+- **No new functionality** - wraps existing core modules
+- **Simple coordination**: worktree creation, review requests, PR generation
+- **Status management**: Update database with agent states
+- **UI bridge**: Connect web interface to core operations
+
+### Data Persistence
+
+**SQLite Database**:
+- Instance metadata and relationships
+- Agent status and progress tracking
+- Project configuration and preferences
+
+**GitHub as External State**:
+- Issue tracking and coordination
+- Pull request management
+- Communication history
+
+**Local Filesystem**:
+- Worktree management
+- Project files and configuration
+- Agent session data
+
+## Deployment Architecture
+
+### Local Installation Pattern
+
+```
+User Machine:
+├── Claude Codex Application
+│   ├── Web Server (port 3001)
+│   ├── WebSocket Server (port 3002)
+│   ├── MCP Server
+│   └── SQLite Database
+├── Agent Runtime Environment
+│   ├── tmux Sessions (per agent)
+│   ├── git Worktrees (isolated environments)
+│   └── Claude Code Instances
+└── External Dependencies
+    ├── GitHub API (internet)
+    ├── Anthropic API (internet)
+    └── Local git/tmux/Node.js
+```
+
+### Scalability Model
+
+**Scales with Model Improvements**:
+- Current: Agents sometimes succeed at issue → PR
+- Future: Higher success rates without platform changes
+- Value: System grows more capable without feature additions
+
+**Resource Management**:
+- Multiple concurrent agent sessions
+- Isolated worktree environments
+- Computational resource allocation per agent
+
+## Security & Privacy
+
+### Local-First Benefits
+- **Data privacy**: Code never leaves user environment
+- **No vendor lock-in**: Full control over agent configurations
+- **Audit trail**: All actions visible through GitHub/local logs
+
+### Isolation Patterns
+- **Agent isolation**: Separate worktrees prevent cross-contamination
+- **Session separation**: tmux sessions provide process isolation
+- **Stateless design**: No persistent agent memory across sessions
