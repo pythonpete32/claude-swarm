@@ -1,14 +1,33 @@
-# Claude Codex UI: Architecture & Design Document
+# Claude Codex Architecture & Design Document
 
 ## Overview
 
-Claude Codex UI is a local development instance manager that provides a web-based dashboard for managing multiple Claude Code agents working in isolated environments. It abstracts away the complexity of Git worktrees and tmux sessions, providing an intuitive interface similar to ChatGPT Codex but running locally.
+Claude Codex is a UI-first multi-agent development platform that orchestrates three specialized agent types through isolated environments. The system abstracts away the complexity of Git worktrees and tmux sessions, providing an intuitive web interface for managing parallel Claude Code agents working on the same or different issues.
 
-### Core Concept
-Each "instance" consists of:
-- **Git Worktree**: Isolated development environment
-- **tmux Session**: Persistent terminal session
-- **Claude Agent**: AI assistant with full context
+### Core Concept: Three-Agent System
+The system manages three distinct agent types, each with specialized responsibilities:
+
+**Planning Agent**: Conversational planning and specification creation
+- Turn-based interaction with users to define requirements
+- Creates formal artifacts (PRDs, specifications)
+- Translates planning documents into GitHub issues
+
+**Coding Agent**: Primary development workhorse  
+- Issue-driven development with configurable system prompts
+- Operates in observable interactive sessions
+- Can spawn Review Agents for completed work
+- Supports parallel instances per GitHub issue
+
+**Review Agent**: Ephemeral, automated code review
+- Spawned by Coding Agents via MCP tools
+- Forks worktree for isolated review environment
+- Makes binary decisions: Approve → PR or Reject → Feedback
+- Communicates through git-based artifact exchange
+
+Each agent instance consists of:
+- **Git Worktree**: Isolated development environment with agent-specific context
+- **tmux Session**: Persistent terminal session for real-time observation
+- **Claude Agent**: AI assistant with full Claude Code capabilities + project-specific MCP tools
 
 ## System Architecture
 
@@ -54,11 +73,16 @@ packages/
 - Worktrees and tmux sessions survive independently
 - Lightweight database for coordination
 
-### Workflow Design
-**Chosen: Issue-Centric**
-- `start-work-session` (issue + optional prompt)
-- `start-review-session` 
-- `start-adhoc-session` (just prompt)
+### Agent Lifecycle Design
+**Principle: Specialized Agent Types, Not Generic Workflows**
+
+A "workflow" in Claude Codex is simply the lifecycle management of a specific agent type:
+
+- **Coding Agent Workflow**: Launch → Monitor → Status Updates → Completion/Cleanup
+- **Review Agent Workflow**: Spawn → Fork → Review → Decision → Cleanup  
+- **Planning Agent Workflow**: Launch → Conversation → Document Creation → Issue Generation
+
+**Key Insight**: Workflows are agent lifecycle management, not configurable process engines.
 
 ### Terminal Integration
 **Chosen: Direct tmux Streaming**
@@ -69,11 +93,14 @@ packages/
 ### Instance Identification
 **Format: `{type}-{issue}-a{agent}`**
 ```
-work-123-a1     # First agent on issue 123
-work-123-a2     # Second agent on issue 123  
-review-123-a1   # Review of first agent's work
-adhoc-a1        # First adhoc session
+work-123-a1     # First Coding Agent on issue 123
+work-123-a2     # Second Coding Agent on issue 123 (parallel development)
+review-123-a1   # Review Agent for first agent's work
+planning-a1     # Planning Agent for project specification
+adhoc-a1        # Adhoc Coding Agent (no specific issue)
 ```
+
+**Parallel Agent Support**: Multiple Coding Agents can work on the same issue simultaneously, each producing separate potential solutions as PRs. This allows for solution diversity and comparison.
 
 ### GitHub Integration
 **Full Integration: Issues + Projects**
@@ -156,23 +183,50 @@ UI Chat Box → UI Server → Core Functions → Database Update
 ```
 
 ### Agent-Driven State Transitions
+**Core Principle**: Status updates only occur through high-leverage MCP tool calls
+
 ```
-work-123-a1 → [MCP: spawn_review] → review-123-a1
-review-123-a1 → [MCP: create_pr] → Done state  
-review-123-a1 → [MCP: send_feedback] → work-123-a1 (iteration)
+Coding Agent → [MCP: request_review] → Review Agent spawned
+Review Agent → [MCP: create_pr] → PR created + Review Agent terminated
+Review Agent → [MCP: send_feedback] → Feedback merged to Coding Agent + Review Agent terminated
+Coding Agent → [MCP: create_pr] → Direct PR creation (bypass review)
+Planning Agent → [MCP: create_issues] → GitHub issues created from planning artifacts
 ```
 
-### Real-Time Updates
-**Primary**: Agent MCP calls trigger database updates
-**Fallback**: Periodic discovery scanning for orphaned instances
-**UI**: WebSocket for real-time dashboard updates
+**Five Critical State Transitions**:
+- `STARTED`: Instance launched with worktree + tmux session
+- `WAITING_REVIEW`: Coding Agent requested review via MCP tool
+- `PR_CREATED`: Agent created pull request via MCP tool
+- `PR_MERGED`: GitHub webhook/polling detected merge
+- `PR_CLOSED`: GitHub webhook/polling detected closure
+
+### Status Communication Architecture
+**Primary Mechanism**: Status-updating MCP tools trigger database state changes
+
+**Core Status-Updating MCP Tools**:
+- `request_review` → `WAITING_REVIEW` status
+- `create_pr` → `PR_CREATED` status
+- `spawn_review_instance` → Creates new Review Agent instance
+- `send_feedback` → Git merge + database event logging
+
+**Rejected Approach**: Terminal output parsing, file watchers, or hybrid monitoring systems are unnecessary. The MCP-centric approach provides sufficient observability.
+
+**UI Updates**: WebSocket notifications triggered by database state changes from MCP tool execution
+**Fallback**: Periodic discovery scanning only for orphaned instances (machine restart recovery)
 
 ## Technical Specifications
 
-### MCP Integration
-- Claude agents launch with custom MCP server attached
-- MCP provides tools for instance management and coordination
-- Function calls automatically update shared database state
+### MCP Integration Architecture
+**Agent Access Pattern**: All agents connect to shared MCP server providing project-specific tools
+
+**Core MCP Tools (Status-Updating Only)**:
+1. **`request_review`** - Coding Agent spawns Review Agent with review loop protection
+2. **`create_pr`** - Any agent creates GitHub pull request
+3. **`send_feedback`** - Review Agent delivers feedback via git merge + database tracking
+
+**Review Loop Protection**: `request_review` enforces configurable maximum review iterations (default: 3) to prevent infinite Coding Agent → Review Agent → Feedback loops.
+
+**Unified Communication**: MCP tools orchestrate git operations (don't bypass git) while providing database tracking for UI observability. For example, `send_feedback` both merges feedback files into the Coding Agent's worktree AND logs the interaction for dashboard visibility.
 
 ### Database Strategy
 **Chosen: SQLite**
@@ -213,9 +267,13 @@ npx @claude-codex/ui
 4. Basic instance management (create, view, kill)
 
 **Dependencies:**
-- UI Server with REST API + WebSocket
-- SQLite database schema
-- Integration with existing core package functions
+- **Workflows Package**: Agent lifecycle orchestration (MISSING - 0% complete)
+- **UI Server**: REST API + WebSocket + Core package integration (5% complete)
+- **MCP Server**: Agent coordination tools (MISSING - 0% complete)
+- **Database Layer**: SQLite state persistence (MISSING - 0% complete)
+- **Core Package Integration**: Replace server mocks with real operations (MISSING)
+
+**Current Implementation Gap**: The core package (95% complete) and UI components (80% complete) exist, but the critical integration layers are missing.
 
 ### Phase 2: Agent Integration  
 **Priority 2 - Agent Coordination:**
@@ -275,12 +333,12 @@ Start using the tool to build itself as soon as basic functionality is available
 - ✅ Security model for agent authorization implemented
 - ✅ Tool discovery and registration documented
 
-**Tools Specified:**
-- ✅ `spawn_review_instance` - Create review from work instance
-- ✅ `create_pull_request` - Generate PR from completed work
-- ✅ `send_feedback` - Pass review feedback to work instance
-- ✅ `update_instance_status` - Real-time status updates
-- ✅ `query_instances` - Query instance metadata and relationships
+**Core Tools Specified:**
+- ✅ `request_review` - Coding Agent spawns Review Agent (with loop protection)
+- ✅ `create_pr` - Generate PR from completed work
+- ✅ `send_feedback` - Review Agent delivers feedback via git merge + database tracking
+
+**Design Principle**: Minimal core tool set focused on state-changing operations only. Instance queries handled by UI server REST API, not MCP tools.
 
 ### 3. UI Component Architecture
 **Status: ✅ Complete** - See [UI Component Architecture](./ui-component-architecture.md)

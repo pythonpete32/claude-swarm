@@ -1,10 +1,10 @@
 # UI Component Architecture
 
-This document defines the React component architecture for Claude Codex UI, including component hierarchy, data flow patterns, state management, and styling approach.
+This document defines the React component architecture for Claude Codex, including component hierarchy, data flow patterns, state management, and styling approach.
 
 ## Overview
 
-The Claude Codex UI provides a web-based dashboard for managing multiple Claude Code agent instances. The frontend is built with React + TypeScript + Vite, emphasizing real-time updates, responsive design, and intuitive instance management.
+Claude Codex provides a web-based dashboard for managing multiple Claude Code agent instances across three specialized agent types (Planning, Coding, Review). The frontend is built with React + TypeScript + Vite, emphasizing real-time updates, responsive design, and intuitive multi-agent coordination.
 
 ## Architecture Principles
 
@@ -511,4 +511,4 @@ src/
 
 ---
 
-*This UI Component Architecture provides the foundation for building a responsive, real-time dashboard that effectively manages Claude Code agent instances while maintaining excellent user experience and code quality.*
+*This UI Component Architecture provides the foundation for building a responsive, real-time dashboard that effectively manages the three-agent Claude Codex system while maintaining excellent user experience and code quality.*
