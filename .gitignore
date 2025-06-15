@@ -5,4 +5,6 @@ node_modules/*
 coverage/*
 docs/*
 .DS_Store
-.envexcalidraw.log
+.env
+excalidraw.log
+**/node_modules/.vite/vitest/**/results.json
