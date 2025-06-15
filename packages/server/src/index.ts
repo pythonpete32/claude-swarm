@@ -1,8 +1,8 @@
 import { Hono } from 'hono';
 import { serve } from '@hono/node-server';
-import { spawn } from 'child_process';
 import { WebSocketServer } from 'ws';
 import { createServer } from 'http';
+import * as pty from 'node-pty';
 
 const app = new Hono();
 
@@ -73,83 +73,86 @@ const wss = new WebSocketServer({
 
 // Handle WebSocket connections
 wss.on('connection', (ws, req) => {
-  console.log('New WebSocket connection');
+  console.log('New WebSocket connection - creating PTY session');
   
-  // Always use "testing" session for now
+  // Create a PTY that attaches to the existing "testing" tmux session
+  // This will give us a real terminal interface
   const sessionName = 'testing';
   
-  // Send initial tmux capture
-  const initialCapture = spawn('tmux', [
-    'capture-pane', 
-    '-t', sessionName,
-    '-p',        // print to stdout
-    '-S', '-'    // capture entire scrollback
-  ]);
+  let ptyProcess;
   
-  initialCapture.stdout.on('data', (data) => {
-    if (ws.readyState === ws.OPEN) {
-      ws.send(data.toString());
-    }
-  });
-  
-  // Set up continuous monitoring of tmux session
-  const monitor = setInterval(() => {
-    const tmuxMonitor = spawn('tmux', [
-      'capture-pane',
-      '-t', sessionName,
-      '-p',
-      '-S', '-5'  // Last 5 lines to reduce noise
-    ]);
+  try {
+    // Attach to existing tmux session using PTY
+    ptyProcess = pty.spawn('tmux', ['attach-session', '-t', sessionName], {
+      name: 'xterm-256color',
+      cols: 80,
+      rows: 24,
+      cwd: process.cwd(),
+      env: process.env
+    });
     
-    tmuxMonitor.stdout.on('data', (data) => {
-      const output = data.toString();
-      // Only send if there's actual content and WebSocket is open
-      if (output.trim().length > 0 && ws.readyState === ws.OPEN) {
-        ws.send(output);
+    console.log(`PTY attached to tmux session: ${sessionName}`);
+    
+    // Send PTY output directly to WebSocket
+    ptyProcess.onData((data) => {
+      if (ws.readyState === ws.OPEN) {
+        ws.send(data);
       }
     });
     
-    tmuxMonitor.on('error', (error) => {
-      console.error('Tmux monitor error:', error.message);
+    // Handle PTY exit
+    ptyProcess.onExit(({ exitCode, signal }) => {
+      console.log(`PTY exited with code ${exitCode} and signal ${signal}`);
+      if (ws.readyState === ws.OPEN) {
+        ws.close();
+      }
     });
-  }, 2000); // Check every 2 seconds
-  
-  // Handle incoming messages (terminal input)
-  ws.on('message', (message) => {
-    const messageStr = message.toString();
-    console.log(`Received message: ${messageStr}`);
     
-    // Handle terminal input - send to tmux session
-    if (messageStr.startsWith('input:')) {
-      const input = messageStr.slice(6); // Remove 'input:' prefix
-      
-      // Send input to the testing tmux session
-      const tmuxInput = spawn('tmux', [
-        'send-keys',
-        '-t', sessionName,
-        input,
-        'Enter'
-      ]);
-      
-      tmuxInput.on('error', (error) => {
-        console.error('Tmux input error:', error.message);
-        if (ws.readyState === ws.OPEN) {
-          ws.send(`Error sending input: ${error.message}\n`);
-        }
-      });
+  } catch (error) {
+    console.error('Error creating PTY:', error);
+    if (ws.readyState === ws.OPEN) {
+      ws.send(`Error: Could not attach to tmux session "${sessionName}"\r\n`);
+      ws.close();
+    }
+    return;
+  }
+  
+  // Handle incoming messages (terminal input and control messages from browser)
+  ws.on('message', (message) => {
+    const data = message.toString();
+    
+    // Try to parse as JSON first (for control messages like resize)
+    try {
+      const json = JSON.parse(data);
+      if (json.type === 'resize' && ptyProcess) {
+        ptyProcess.resize(json.cols, json.rows);
+        console.log(`Terminal resized to ${json.cols}x${json.rows}`);
+        return;
+      }
+    } catch (e) {
+      // Not JSON, treat as regular terminal input
+    }
+    
+    // Send all other input directly to the PTY (real terminal behavior)
+    if (ptyProcess) {
+      ptyProcess.write(data);
     }
   });
   
   // Handle WebSocket close
   ws.on('close', () => {
-    console.log('WebSocket connection closed');
-    clearInterval(monitor);
+    console.log('WebSocket connection closed - cleaning up PTY');
+    if (ptyProcess) {
+      ptyProcess.kill();
+    }
   });
   
   // Handle WebSocket errors
   ws.on('error', (error) => {
     console.error('WebSocket error:', error);
-    clearInterval(monitor);
+    if (ptyProcess) {
+      ptyProcess.kill();
+    }
   });
 });
 
