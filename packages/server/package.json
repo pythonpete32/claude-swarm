@@ -1,0 +1,26 @@
+{
+  "name": "@claude-codex/server",
+  "version": "0.1.0",
+  "description": "Claude Codex UI server with REST API and WebSocket terminal streaming",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "bun run --watch src/index.ts",
+    "build": "bun build src/index.ts --outdir dist --target node",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.14.4",
+    "@types/ws": "^8.5.12",
+    "hono": "^4.7.11",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.9.1",
+    "typescript": "^5.6.3"
+  },
+  "keywords": ["claude", "codex", "server", "tmux", "websocket"],
+  "author": "Claude Code",
+  "license": "MIT"
+}
