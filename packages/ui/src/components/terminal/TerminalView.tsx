@@ -60,7 +60,7 @@ export function TerminalView({ instanceId, sessionName, onBack }: TerminalViewPr
         foreground: '#00ff00',
         cursor: '#00ff00',
         cursorAccent: '#000000',
-        selection: 'rgba(0, 255, 0, 0.3)',
+        selectionBackground: 'rgba(0, 255, 0, 0.3)',
         black: '#000000',
         red: '#ff0000',
         green: '#00ff00',

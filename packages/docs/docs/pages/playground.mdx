@@ -29,24 +29,22 @@ claude-swarm list
 
 ### TypeScript API Examples
 
-```typescript twoslash
-// @filename: types.ts
-export interface WorktreeOptions {
+```typescript
+// Type definitions
+interface WorktreeOptions {
   path: string
   branch: string
   upstream?: string
   agentId?: string
 }
 
-export interface GitHubConfig {
+interface GitHubConfig {
   token: string
   baseUrl?: string
   timeout?: number
 }
 
-// @filename: worktree.ts
-import { WorktreeOptions } from './types'
-
+// WorktreeManager implementation
 export class WorktreeManager {
   constructor(private basePath: string) {}
 
@@ -56,11 +54,11 @@ export class WorktreeManager {
   }
 }
 
-// @filename: example.ts
+// Usage example
 import { WorktreeManager } from './worktree'
 
 const manager = new WorktreeManager('/path/to/project')
-//    ^?
+// manager is of type: WorktreeManager
 
 await manager.createWorktree({
   path: './worktrees/feature-123',
@@ -482,11 +480,11 @@ Copy any of these examples and try them in your own project! All code examples a
 
 Now that you've explored the playground:
 
-1. **🚀 [Get Started](/getting-started)** - Install and set up Claude Swarm
+1. **🚀 [Get Started](/getting-started)** - Install and set up Claude Codex
 2. **📚 [Learn Concepts](/concepts/architecture)** - Understand the architecture
-3. **🔧 [CLI Reference](/cli/overview)** - Master the command line interface
-4. **🎯 [Custom Workflows](/guides/custom-workflows)** - Build your own workflows
+3. **🔧 [User Guide](/user-guide)** - Master the platform features
+4. **🤖 [Agent Types](/agents)** - Learn about the three-agent system
 
 :::info[Community]
-Join our [Discord](https://discord.gg/claude-swarm) to share your own examples and get help from the community!
+Join our [Discord](https://discord.gg/claude-codex) to share your own examples and get help from the community!
 :::

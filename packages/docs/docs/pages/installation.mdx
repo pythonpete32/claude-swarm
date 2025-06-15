@@ -1,450 +1,50 @@
----
-title: Installation Guide  
-description: Complete installation guide for Claude Swarm with all supported platforms and methods
----
+# Installation
 
-# Installation Guide
-
-Install Claude Swarm on your system using your preferred package manager. This guide covers all supported installation methods and platform-specific considerations.
-
-:::tip[Quick Install]
-```bash
-# Recommended: Install with Bun
-bun add -g @claude-swarm/cli
-
-# Or with npm
-npm install -g @claude-swarm/cli
-```
-:::
+*Complete installation guide for all platforms*
 
 ## System Requirements
 
-### Minimum Requirements
-- **Node.js** 18.0.0 or higher
-- **Git** 2.25.0 or higher (for worktree support)
-- **Operating System**: macOS, Linux, or Windows (WSL recommended)
+### Prerequisites
+- Node.js 18+ or Bun runtime
+- Git 2.30+
+- tmux 3.0+
+- GitHub account and token
 
-### Recommended Requirements
-- **Node.js** 20.0.0 or higher
-- **Git** 2.30.0 or higher
-- **tmux** 3.0 or higher (for session management)
-- **GitHub CLI** 2.0 or higher (for enhanced GitHub integration)
-
-### Check Your System
-
-```bash
-# Check Node.js version
-node --version
-
-# Check Git version  
-git --version
-
-# Check if git worktrees are supported
-git worktree --help
-
-# Check tmux (optional)
-tmux -V
-
-# Check GitHub CLI (optional)
-gh --version
-```
+### Platform Support
+- macOS (recommended)
+- Linux (Ubuntu, Debian, Arch)
+- Windows (WSL2)
 
 ## Installation Methods
 
-### Option 1: Bun (Recommended)
-
-[Bun](https://bun.sh) provides the fastest installation and runtime performance:
-
+### NPM Installation
 ```bash
-# Install Bun if you don't have it
-curl -fsSL https://bun.sh/install | bash
-
-# Install Claude Swarm globally
-bun add -g @claude-swarm/cli
-
-# Verify installation
-claude-swarm --version
+npm install -g claude-codex
 ```
 
-### Option 2: npm
-
-Standard npm installation:
-
+### Bun Installation
 ```bash
-# Install globally with npm
-npm install -g @claude-swarm/cli
-
-# Verify installation
-claude-swarm --version
+bun install -g claude-codex
 ```
 
-### Option 3: pnpm
+### From Source
+*Building from source code*
 
-Fast, disk-efficient package manager:
+## Configuration
 
-```bash
-# Install pnpm if you don't have it
-npm install -g pnpm
+### GitHub Token Setup
+*How to create and configure GitHub personal access tokens*
 
-# Install Claude Swarm
-pnpm add -g @claude-swarm/cli
+### Claude API Configuration
+*Setting up Anthropic API access*
 
-# Verify installation
-claude-swarm --version
-```
+### Local Environment Setup
+*Configuring local development environment*
 
-### Option 4: Yarn
+## Verification
 
-```bash
-# Install globally with Yarn
-yarn global add @claude-swarm/cli
+### Installation Test
+*How to verify successful installation*
 
-# Verify installation  
-claude-swarm --version
-```
-
-### Option 5: npx (No Installation)
-
-Run Claude Swarm without installing:
-
-```bash
-# Run directly with npx
-npx @claude-swarm/cli --help
-
-# Use in scripts
-npx @claude-swarm/cli setup my-project
-```
-
-## Platform-Specific Setup
-
-### macOS
-
-#### Using Homebrew (Coming Soon)
-```bash
-# Will be available soon
-# brew install claude-swarm
-```
-
-#### Manual Setup
-```bash
-# Install dependencies with Homebrew
-brew install git tmux gh
-
-# Install Claude Swarm
-bun add -g @claude-swarm/cli
-```
-
-### Linux (Ubuntu/Debian)
-
-```bash
-# Install dependencies
-sudo apt update
-sudo apt install git tmux
-
-# Install GitHub CLI
-curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
-echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
-sudo apt update
-sudo apt install gh
-
-# Install Node.js (if not already installed)
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-sudo apt-get install -y nodejs
-
-# Install Claude Swarm
-npm install -g @claude-swarm/cli
-```
-
-### Linux (CentOS/RHEL)
-
-```bash
-# Install dependencies
-sudo yum install git tmux
-
-# Install Node.js
-curl -fsSL https://rpm.nodesource.com/setup_20.x | sudo bash -
-sudo yum install nodejs npm
-
-# Install Claude Swarm
-npm install -g @claude-swarm/cli
-```
-
-### Windows (WSL Recommended)
-
-#### Windows Subsystem for Linux (WSL)
-```bash
-# Install WSL if not already installed
-wsl --install
-
-# Inside WSL, follow Linux installation steps
-sudo apt update
-sudo apt install git tmux nodejs npm
-
-# Install Claude Swarm
-npm install -g @claude-swarm/cli
-```
-
-#### Native Windows (PowerShell)
-```powershell
-# Install dependencies with Chocolatey
-choco install git nodejs
-
-# Install Claude Swarm
-npm install -g @claude-swarm/cli
-
-# Note: tmux is not available on Windows
-# Consider using Windows Terminal or WSL for better experience
-```
-
-## Development Installation
-
-For contributors or advanced users who want to build from source:
-
-### Prerequisites
-
-```bash
-# Install dependencies
-bun install  # or npm install
-
-# Required tools
-git --version  # 2.25+
-node --version # 18+
-bun --version  # 1.0+ (recommended)
-```
-
-### Build from Source
-
-```bash
-# Clone the repository
-git clone https://github.com/pythonpete32/claude-swarm.git
-cd claude-swarm
-
-# Install dependencies
-bun install
-
-# Build all packages
-bun run build
-
-# Link for local development
-bun link
-```
-
-### Development Scripts
-
-```bash
-# Run tests
-bun run test
-
-# Type checking
-bun run typecheck
-
-# Linting
-bun run lint
-
-# Watch mode for development
-bun run dev
-```
-
-## Post-Installation Setup
-
-### 1. Verify Installation
-
-```bash
-# Check Claude Swarm version
-claude-swarm --version
-
-# Check available commands
-claude-swarm --help
-
-# Run system check
-claude-swarm doctor
-```
-
-### 2. Initial Configuration
-
-```bash
-# Initialize configuration
-claude-swarm init
-
-# This creates ~/.claude-swarm/config.json with defaults
-```
-
-The default configuration file looks like:
-
-```json filename="~/.claude-swarm/config.json"
-{
-  "github": {
-    "token": "",
-    "baseUrl": "https://api.github.com",
-    "timeout": 30000
-  },
-  "tmux": {
-    "enabled": true,
-    "sessionPrefix": "cs-",
-    "defaultLayout": "main-horizontal"
-  },
-  "worktree": {
-    "basePath": "./worktrees",
-    "cleanupOnExit": true
-  },
-  "agent": {
-    "contextPath": "~/.claude-swarm/contexts",
-    "preserveHistory": true
-  }
-}
-```
-
-### 3. GitHub Integration (Optional)
-
-```bash
-# Authenticate with GitHub CLI (if installed)
-gh auth login
-
-# Or set token directly
-claude-swarm config set github.token YOUR_GITHUB_TOKEN
-
-# Set default repository
-claude-swarm config set github.defaultRepo owner/repository
-```
-
-### 4. Test Your Setup
-
-```bash
-# Navigate to a git repository
-cd /path/to/your/project
-
-# Test project setup
-claude-swarm setup test-project
-
-# Verify worktree creation
-claude-swarm list
-
-# Clean up test
-claude-swarm cleanup --worktree test-project
-```
-
-## Troubleshooting Installation
-
-### Common Issues
-
-#### Node.js Version Conflicts
-
-```bash
-# Check your Node.js version
-node --version
-
-# If using nvm, switch to supported version
-nvm install 20
-nvm use 20
-
-# Reinstall Claude Swarm
-npm install -g @claude-swarm/cli
-```
-
-#### Permission Errors (Linux/macOS)
-
-```bash
-# Fix npm permissions
-mkdir ~/.npm-global
-npm config set prefix '~/.npm-global'
-
-# Add to your shell profile (.bashrc, .zshrc, etc.)
-echo 'export PATH=~/.npm-global/bin:$PATH' >> ~/.bashrc
-source ~/.bashrc
-
-# Now install without sudo
-npm install -g @claude-swarm/cli
-```
-
-#### Git Worktree Not Supported
-
-```bash
-# Check git version
-git --version
-
-# Update git if version is below 2.25
-# On macOS with Homebrew:
-brew update && brew upgrade git
-
-# On Ubuntu:
-sudo apt update && sudo apt upgrade git
-```
-
-#### Command Not Found
-
-```bash
-# Check if installation path is in PATH
-echo $PATH
-
-# Find where Claude Swarm was installed
-npm list -g @claude-swarm/cli
-
-# Add to PATH if needed (example for npm global)
-echo 'export PATH="$(npm prefix -g)/bin:$PATH"' >> ~/.bashrc
-source ~/.bashrc
-```
-
-### Getting Help
-
-If you encounter issues:
-
-1. **Check the troubleshooting guide**: [Troubleshooting](/guides/troubleshooting)
-2. **Run system diagnostics**: `claude-swarm doctor`
-3. **Join our Discord**: [Discord Community](https://discord.gg/claude-swarm)
-4. **Open an issue**: [GitHub Issues](https://github.com/pythonpete32/claude-swarm/issues)
-
-## Updating Claude Swarm
-
-### Update Global Installation
-
-```bash
-# With npm
-npm update -g @claude-swarm/cli
-
-# With Bun
-bun update -g @claude-swarm/cli
-
-# With pnpm
-pnpm update -g @claude-swarm/cli
-```
-
-### Check for Updates
-
-```bash
-# Check current version
-claude-swarm --version
-
-# Check for available updates
-claude-swarm update --check
-
-# Update to latest version
-claude-swarm update
-```
-
-## Uninstallation
-
-If you need to remove Claude Swarm:
-
-```bash
-# Uninstall global package
-npm uninstall -g @claude-swarm/cli
-
-# Remove configuration (optional)
-rm -rf ~/.claude-swarm
-
-# Remove any remaining worktrees
-# (Check your projects for ./worktrees directories)
-```
-
-## Next Steps
-
-After successful installation:
-
-1. **🚀 [Quick Start](/getting-started)** - Get up and running in minutes
-2. **📚 [Core Concepts](/concepts/architecture)** - Understand the architecture
-3. **⚙️ [Configuration](/api/config)** - Customize your setup
-4. **🎯 [First Project](/guides/first-project)** - Create your first workflow
-
-:::tip[Installation Complete!]
-Welcome to Claude Swarm! Join our [Discord community](https://discord.gg/claude-swarm) to get help and share your experience.
-:::
+### First Run
+*Initial setup and configuration verification*

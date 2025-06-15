@@ -50,7 +50,7 @@ We follow the [Diátaxis framework](https://diataxis.fr/) for documentation:
 #### Use Clear, Actionable Language
 
 ```markdown
-<!-- ✅ Good: Clear and actionable -->
+{/* ✅ Good: Clear and actionable */}
 ## Set up GitHub Integration
 
 Configure your GitHub token to enable issue tracking:
@@ -59,11 +59,10 @@ Configure your GitHub token to enable issue tracking:
 claude-swarm config set github.token YOUR_TOKEN
 ```
 
-<!-- ❌ Bad: Vague and unclear -->
-## GitHub
+{/* ❌ Bad: Vague and unclear */}
+{/* ## GitHub
 
-You might want to configure GitHub stuff.
-```
+You might want to configure GitHub stuff. */}
 
 #### Include Code Examples
 
@@ -89,24 +88,24 @@ const manager = new WorktreeManager()
 #### Use Appropriate Callouts
 
 ```markdown
-<!-- For important warnings -->
+{/* For important warnings */}
 :::warning[Important]
 Always backup your work before running cleanup operations.
 :::
 
-<!-- For helpful tips -->
+{/* For helpful tips */}
 :::tip[Pro Tip]
 Use agent IDs to organize different types of work.
 :::
 
-<!-- For critical information -->
+{/* For critical information */}
 :::danger[Critical]
 Never run `--force` without checking active worktrees first.
 :::
 
-<!-- For additional information -->
+{/* For additional information */}
 :::info[Learn More]
-Check out the [API Reference](/api/core) for detailed function signatures.
+Check out the [API Reference](/api) for detailed function signatures.
 :::
 ```
 
@@ -158,20 +157,26 @@ pnpm add @claude-swarm/cli
 #### Include External Code Files
 
 ```typescript
-// Include from file
-```ts // [!include ~/examples/config.ts]
+// Example of including code from external files
+// Note: Use proper file paths relative to the docs directory
+import { defineConfig } from '@claude-codex/core'
+
+export default defineConfig({
+  github: { token: process.env.GITHUB_TOKEN },
+  tmux: { enabled: true }
+})
 ```
 
-#### TypeScript Twoslash for Type Information
+#### TypeScript Type Information
 
-```typescript twoslash
-import { WorktreeOptions } from '@claude-swarm/core'
+```typescript
+import { WorktreeOptions } from '@claude-codex/core'
 
 const options: WorktreeOptions = {
   path: './worktrees/test',
   branch: 'feature-test'
 }
-//    ^?
+// options shows type: WorktreeOptions
 ```
 
 ## Local Development
