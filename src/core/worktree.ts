@@ -44,6 +44,8 @@ export interface GitOperationsInterface {
   createBranch(name: string, startPoint?: string): Promise<void>;
   /** Check if branch exists */
   branchExists(name: string): Promise<boolean>;
+  /** Get list of uncommitted files in a worktree */
+  getUncommittedFiles(path: string): Promise<string[]>;
 }
 
 /**
@@ -261,49 +263,259 @@ export interface EnsureBranchOptions {
 }
 
 /**
- * Default Git operations implementation
+ * Default Git operations implementation with real git command execution
  */
 class DefaultGitOperations implements GitOperationsInterface {
+  private repositoryRoot: string;
+
+  constructor(repositoryRoot?: string) {
+    this.repositoryRoot = repositoryRoot || process.cwd();
+  }
+
+  /**
+   * Execute git command and return stdout
+   */
+  private async execGit(args: string[], cwd?: string): Promise<string> {
+    const { exec } = await import("node:child_process");
+    const { promisify } = await import("node:util");
+    const execAsync = promisify(exec);
+
+    const workingDir = cwd || this.repositoryRoot;
+    const command = `git ${args.join(" ")}`;
+
+    try {
+      const { stdout, stderr } = await execAsync(command, {
+        cwd: workingDir,
+        timeout: 30000,
+        encoding: "utf8",
+      });
+
+      if (stderr && !stderr.includes("warning:")) {
+        // Git sometimes writes non-error info to stderr, but warnings are OK
+        throw new Error(`Git command failed: ${stderr}`);
+      }
+
+      return stdout.trim();
+    } catch (error: unknown) {
+      const execError = error as {
+        code?: number;
+        stdout?: string;
+        stderr?: string;
+        message?: string;
+      };
+
+      // Create a more descriptive error message
+      const errorMessage = execError.stderr || execError.message || "Unknown git error";
+      throw new Error(`Git command '${command}' failed: ${errorMessage}`);
+    }
+  }
+
   async worktreeAdd(path: string, branch?: string): Promise<void> {
-    // This would implement actual git worktree add command
-    // For now, throw not implemented to make tests fail appropriately
-    throw new Error("DefaultGitOperations not implemented yet");
+    const args = ["worktree", "add"];
+
+    if (branch) {
+      // Check if branch exists first
+      const branchExists = await this.branchExists(branch);
+      if (!branchExists) {
+        // Create new branch
+        args.push("-b", branch);
+      }
+    }
+
+    args.push(path);
+
+    if (branch && (await this.branchExists(branch))) {
+      args.push(branch);
+    }
+
+    await this.execGit(args);
   }
 
   async worktreeRemove(path: string, force = false): Promise<void> {
-    throw new Error("DefaultGitOperations not implemented yet");
+    const args = ["worktree", "remove"];
+
+    if (force) {
+      args.push("--force");
+    }
+
+    args.push(path);
+
+    await this.execGit(args);
   }
 
   async worktreeList(): Promise<GitWorktreeInfo[]> {
-    throw new Error("DefaultGitOperations not implemented yet");
+    try {
+      const output = await this.execGit(["worktree", "list", "--porcelain"]);
+
+      if (!output.trim()) {
+        return [];
+      }
+
+      return this.parseWorktreeList(output);
+    } catch (_error) {
+      // If git worktree list fails, it might be because we're not in a git repository
+      // or worktrees are not supported. Return empty array rather than throwing.
+      return [];
+    }
+  }
+
+  /**
+   * Parse git worktree list --porcelain output
+   */
+  private parseWorktreeList(output: string): GitWorktreeInfo[] {
+    const worktrees: GitWorktreeInfo[] = [];
+    const lines = output.split("\n");
+
+    let currentWorktree: Partial<GitWorktreeInfo> = {};
+
+    for (const line of lines) {
+      if (line.startsWith("worktree ")) {
+        // Save previous worktree if complete
+        if (currentWorktree.path) {
+          worktrees.push(this.completeWorktreeInfo(currentWorktree));
+        }
+
+        // Start new worktree
+        currentWorktree = {
+          path: line.substring(9), // Remove "worktree " prefix
+          isBare: false,
+          isLocked: false,
+        };
+      } else if (line.startsWith("HEAD ")) {
+        currentWorktree.commit = line.substring(5);
+      } else if (line.startsWith("branch ")) {
+        currentWorktree.branch = line.substring(7);
+      } else if (line === "bare") {
+        currentWorktree.isBare = true;
+      } else if (line.startsWith("locked")) {
+        currentWorktree.isLocked = true;
+        if (line.length > 6) {
+          currentWorktree.lockReason = line.substring(7);
+        }
+      }
+    }
+
+    // Add the last worktree
+    if (currentWorktree.path) {
+      worktrees.push(this.completeWorktreeInfo(currentWorktree));
+    }
+
+    return worktrees;
+  }
+
+  /**
+   * Complete worktree info with defaults
+   */
+  private completeWorktreeInfo(partial: Partial<GitWorktreeInfo>): GitWorktreeInfo {
+    return {
+      path: partial.path || "",
+      branch: partial.branch || "(detached HEAD)",
+      commit: partial.commit || "",
+      isBare: partial.isBare || false,
+      isLocked: partial.isLocked || false,
+      lockReason: partial.lockReason,
+    };
   }
 
   async worktreePrune(): Promise<void> {
-    throw new Error("DefaultGitOperations not implemented yet");
+    await this.execGit(["worktree", "prune"]);
   }
 
   async isWorktree(path: string): Promise<boolean> {
-    throw new Error("DefaultGitOperations not implemented yet");
+    try {
+      // Check if the path has a .git file (worktree) or .git directory (main repo)
+      const { access } = await import("node:fs/promises");
+      const { join } = await import("node:path");
+
+      const gitPath = join(path, ".git");
+      await access(gitPath);
+
+      // Now check if it's a valid git worktree/repository
+      await this.execGit(["rev-parse", "--git-dir"], path);
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   async getWorktreeRoot(path: string): Promise<string> {
-    throw new Error("DefaultGitOperations not implemented yet");
+    try {
+      const gitRoot = await this.execGit(["rev-parse", "--show-toplevel"], path);
+      return gitRoot;
+    } catch (error) {
+      throw new Error(
+        `Failed to find git repository root for path: ${path}. ${(error as Error).message}`,
+      );
+    }
   }
 
   async getCurrentBranch(path: string): Promise<string> {
-    throw new Error("DefaultGitOperations not implemented yet");
+    try {
+      const branch = await this.execGit(["rev-parse", "--abbrev-ref", "HEAD"], path);
+      return branch;
+    } catch (error) {
+      throw new Error(
+        `Failed to get current branch for path: ${path}. ${(error as Error).message}`,
+      );
+    }
   }
 
   async hasUncommittedChanges(path: string): Promise<boolean> {
-    throw new Error("DefaultGitOperations not implemented yet");
+    try {
+      const status = await this.execGit(["status", "--porcelain"], path);
+      return status.trim().length > 0;
+    } catch {
+      // If git status fails, assume there are uncommitted changes for safety
+      return true;
+    }
   }
 
   async createBranch(name: string, startPoint?: string): Promise<void> {
-    throw new Error("DefaultGitOperations not implemented yet");
+    const args = ["branch", name];
+
+    if (startPoint) {
+      args.push(startPoint);
+    }
+
+    await this.execGit(args);
   }
 
   async branchExists(name: string): Promise<boolean> {
-    throw new Error("DefaultGitOperations not implemented yet");
+    try {
+      await this.execGit(["show-ref", "--verify", `refs/heads/${name}`]);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Get list of uncommitted files in a worktree
+   */
+  async getUncommittedFiles(path: string): Promise<string[]> {
+    try {
+      const status = await this.execGit(["status", "--porcelain"], path);
+
+      if (!status.trim()) {
+        return [];
+      }
+
+      // Parse git status --porcelain output
+      const files: string[] = [];
+      for (const line of status.split("\n")) {
+        if (line.trim()) {
+          // Status format: "XY filename" where X and Y are status codes
+          const filename = line.substring(3).trim();
+          if (filename) {
+            files.push(filename);
+          }
+        }
+      }
+
+      return files;
+    } catch {
+      return [];
+    }
   }
 }
 
@@ -317,6 +529,21 @@ interface FileOperationsInterface {
 class DefaultFileOperations implements FileOperationsInterface {
   async ensureClaudeContext(targetPath: string, sourcePath?: string): Promise<ClaudeContextStatus> {
     return ensureClaudeContext(targetPath, sourcePath);
+  }
+}
+
+/**
+ * Get list of uncommitted files from a worktree
+ */
+async function getUncommittedFiles(
+  worktreePath: string,
+  gitOps: GitOperationsInterface,
+): Promise<string[]> {
+  try {
+    // Use the git operations interface to get uncommitted files
+    return await gitOps.getUncommittedFiles(worktreePath);
+  } catch {
+    return ["unknown"];
   }
 }
 
@@ -397,20 +624,8 @@ export async function validateWorktreeState(
     if (hasUncommitted) {
       validation.isClean = false;
       validation.warnings.push("Worktree has uncommitted changes");
-      // Get the actual uncommitted files from mock (in tests) or git (in real usage)
-      // For mocks, we need to retrieve the specific files that were set
-      try {
-        // This is a bit of a hack for tests - we'll rely on the mock to provide the files
-        // In real implementation, this would parse git status output
-        if ((gitOps as any).uncommittedChanges && (gitOps as any).uncommittedChanges.get) {
-          const mockFiles = (gitOps as any).uncommittedChanges.get(worktreePath);
-          validation.uncommittedFiles = mockFiles || ["unknown"];
-        } else {
-          validation.uncommittedFiles = ["unknown"];
-        }
-      } catch {
-        validation.uncommittedFiles = ["unknown"];
-      }
+      // Get uncommitted files list
+      validation.uncommittedFiles = await getUncommittedFiles(worktreePath, gitOps);
     }
 
     validation.isValid = validation.hasValidGitDir && validation.hasValidBranch;
@@ -518,7 +733,7 @@ export async function createWorktree(
     if (setupContext) {
       try {
         contextStatus = await fileOps.ensureClaudeContext(worktreePath);
-      } catch (error) {
+      } catch (_error) {
         // Context setup failure is not critical, just log warning
         contextStatus = {
           isComplete: false,
@@ -597,7 +812,7 @@ export async function removeWorktree(
   // Validate input path
   CommonValidators.worktreePath().validateOrThrow(worktreePath, "Worktree path validation");
 
-  const { force = false, cleanup = true } = options;
+  const { force = false } = options;
 
   try {
     // Check if worktree exists
@@ -684,12 +899,7 @@ export async function listWorktrees(
   options: ListWorktreesOptions = {},
   gitOps: GitOperationsInterface = defaultGitOps,
 ): Promise<ExtendedWorktreeInfo[]> {
-  const {
-    includeMainWorktree = true,
-    includeInactive = true,
-    validateState = false,
-    sortBy = "path",
-  } = options;
+  const { includeMainWorktree = true, validateState = false, sortBy = "path" } = options;
 
   try {
     // Get raw worktree list from Git
@@ -742,7 +952,6 @@ export async function listWorktrees(
       case "branch":
         worktrees.sort((a, b) => a.branch.localeCompare(b.branch));
         break;
-      case "path":
       default:
         worktrees.sort((a, b) => a.path.localeCompare(b.path));
         break;
@@ -1064,13 +1273,7 @@ export async function cleanupOrphanedWorktrees(
   options: CleanupWorktreesOptions = {},
   gitOps: GitOperationsInterface = defaultGitOps,
 ): Promise<WorktreeCleanupResult> {
-  const {
-    dryRun = false,
-    includeActive = false,
-    olderThan,
-    patterns,
-    preserveBranches = [],
-  } = options;
+  const { dryRun = false, olderThan, patterns, preserveBranches = [] } = options;
 
   const result: WorktreeCleanupResult = {
     removedWorktrees: [],

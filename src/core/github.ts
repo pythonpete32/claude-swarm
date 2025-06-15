@@ -5,15 +5,12 @@
  * issue handling, pull request automation, and collaborative development workflows.
  */
 
-import { createHash, createHmac } from "node:crypto";
-import { promises as fs } from "node:fs";
-import https from "node:https";
-import path from "node:path";
-import { URL } from "node:url";
+import { createHmac } from "node:crypto";
 
 import { ERROR_CODES, ErrorFactory } from "@/shared/errors";
-import type { GitBranchInfo, RepositoryInfo } from "@/shared/types";
-import { CommonValidators } from "@/shared/validation";
+import type { RepositoryInfo } from "@/shared/types";
+import type { FileSystemInterface } from "./files";
+import type { GitOperationsInterface } from "./worktree";
 
 /**
  * GitHub API interface for dependency injection.
@@ -109,7 +106,13 @@ export interface RepositoryCloneResult {
   repository: RepositoryInfo;
   branch: string;
   commit: string;
-  worktreeInfo?: any;
+  worktreeInfo?: {
+    path: string;
+    head: string;
+    branch: string;
+    bare: boolean;
+    detached: boolean;
+  };
 }
 
 /**
@@ -298,6 +301,200 @@ export interface RequestOptions {
   retries?: number;
 }
 
+// GitHub API raw response types based on Octokit documentation
+export interface GitHubAPIIssueResponse {
+  id: number;
+  number: number;
+  title: string;
+  body: string | null;
+  state: "open" | "closed";
+  labels: Array<{
+    id: number;
+    name: string;
+    color: string;
+    description?: string;
+  }>;
+  assignees: Array<{
+    id: number;
+    login: string;
+    avatar_url: string;
+    url: string;
+    type: string;
+  }>;
+  user: {
+    id: number;
+    login: string;
+    avatar_url: string;
+    url: string;
+    type: string;
+  };
+  milestone?: {
+    id: number;
+    number: number;
+    title: string;
+    description?: string;
+    state: "open" | "closed";
+    due_on?: string;
+    created_at: string;
+    updated_at: string;
+    closed_at?: string;
+  };
+  created_at: string;
+  updated_at: string;
+  closed_at?: string;
+  comments: number;
+  html_url: string;
+}
+
+export interface GitHubAPIPullRequestResponse {
+  id: number;
+  number: number;
+  title: string;
+  body: string | null;
+  state: "open" | "closed" | "merged";
+  head: {
+    ref: string;
+    sha: string;
+    repo: {
+      id: number;
+      name: string;
+      full_name: string;
+      owner: {
+        id: number;
+        login: string;
+        avatar_url: string;
+        url: string;
+        type: string;
+      };
+    };
+    user: {
+      id: number;
+      login: string;
+      avatar_url: string;
+      url: string;
+      type: string;
+    };
+  };
+  base: {
+    ref: string;
+    sha: string;
+    repo: {
+      id: number;
+      name: string;
+      full_name: string;
+      owner: {
+        id: number;
+        login: string;
+        avatar_url: string;
+        url: string;
+        type: string;
+      };
+    };
+    user: {
+      id: number;
+      login: string;
+      avatar_url: string;
+      url: string;
+      type: string;
+    };
+  };
+  user: {
+    id: number;
+    login: string;
+    avatar_url: string;
+    url: string;
+    type: string;
+  };
+  assignees: Array<{
+    id: number;
+    login: string;
+    avatar_url: string;
+    url: string;
+    type: string;
+  }>;
+  requested_reviewers: Array<{
+    id: number;
+    login: string;
+    avatar_url: string;
+    url: string;
+    type: string;
+  }>;
+  labels: Array<{
+    id: number;
+    name: string;
+    color: string;
+    description?: string;
+  }>;
+  milestone?: {
+    id: number;
+    number: number;
+    title: string;
+    description?: string;
+    state: "open" | "closed";
+    due_on?: string;
+    created_at: string;
+    updated_at: string;
+    closed_at?: string;
+  };
+  mergeable: boolean | null;
+  rebaseable: boolean | null;
+  draft: boolean;
+  created_at: string;
+  updated_at: string;
+  merged_at?: string;
+  closed_at?: string;
+  commits: number;
+  additions: number;
+  deletions: number;
+  changed_files: number;
+  html_url: string;
+}
+
+export interface GitHubAPIRepositoryResponse {
+  id: number;
+  name: string;
+  full_name: string;
+  owner: {
+    id: number;
+    login: string;
+    avatar_url: string;
+    url: string;
+    type: string;
+  };
+  default_branch: string;
+  clone_url: string;
+  html_url: string;
+}
+
+export interface GitHubAPIUserResponse {
+  id: number;
+  login: string;
+  name?: string;
+  email?: string;
+  avatar_url: string;
+  url: string;
+  type: string;
+}
+
+export interface GitHubAPIMilestoneResponse {
+  id: number;
+  number: number;
+  title: string;
+  description?: string;
+  state: "open" | "closed";
+  due_on?: string;
+  created_at: string;
+  updated_at: string;
+  closed_at?: string;
+}
+
+export interface GitHubAPILabelResponse {
+  id: number;
+  name: string;
+  color: string;
+  description?: string;
+}
+
 /**
  * Webhook validation options.
  *
@@ -414,7 +611,7 @@ class DefaultGitHubAPI implements GitHubAPIInterface {
 
     // Get user information to validate token
     try {
-      const userResponse = await this.request<any>("/user");
+      const userResponse = await this.request<GitHubUserResponse>("/user");
       const rateLimit = await this.getRateLimit();
 
       return {
@@ -439,33 +636,141 @@ class DefaultGitHubAPI implements GitHubAPIInterface {
     const headers: Record<string, string> = {
       Accept: "application/vnd.github.v3+json",
       "User-Agent": "claude-swarm",
+      "Content-Type": "application/json",
       ...options.headers,
     };
 
     if (this.authToken) {
-      headers["Authorization"] = `token ${this.authToken}`;
+      headers.Authorization = `token ${this.authToken}`;
     }
 
-    // Mock implementation for testing
-    const mockData = {} as T;
-    const mockHeaders = {
-      "x-ratelimit-limit": "5000",
-      "x-ratelimit-remaining": "4999",
-      "x-ratelimit-reset": Math.floor(Date.now() / 1000 + 3600).toString(),
+    const requestOptions: RequestInit = {
+      method: options.method || "GET",
+      headers,
+      ...(options.body ? { body: JSON.stringify(options.body) } : {}),
     };
 
-    return {
-      data: mockData,
-      status: 200,
-      headers: mockHeaders,
-      url,
-      rateLimit: {
-        limit: 5000,
-        remaining: 4999,
-        resetTime: new Date(Date.now() + 3600000),
-        resource: "core",
-      },
-    };
+    let retries = 0;
+    const maxRetries = options.retries || this.maxRetries;
+    const timeout = options.timeout || 30000;
+
+    while (retries <= maxRetries) {
+      try {
+        // Create abort controller for timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+        const response = await fetch(url, {
+          ...requestOptions,
+          signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+
+        // Extract rate limit information from headers
+        const responseHeaders: Record<string, string> = {};
+        response.headers.forEach((value, key) => {
+          responseHeaders[key] = value;
+        });
+
+        const rateLimit: GitHubRateLimit = {
+          limit: Number.parseInt(responseHeaders["x-ratelimit-limit"] || "5000"),
+          remaining: Number.parseInt(responseHeaders["x-ratelimit-remaining"] || "4999"),
+          resetTime: new Date(
+            (Number.parseInt(responseHeaders["x-ratelimit-reset"] || "0") ||
+              Math.floor(Date.now() / 1000) + 3600) * 1000,
+          ),
+          resource: "core",
+        };
+
+        // Handle rate limiting
+        if (response.status === 403 && responseHeaders["x-ratelimit-remaining"] === "0") {
+          throw ErrorFactory.github(
+            ERROR_CODES.GITHUB_API_ERROR,
+            "GITHUB_API_ERROR: Rate limit exceeded",
+            {
+              rateLimit,
+              suggestion: `Rate limit exceeded. Reset at ${rateLimit.resetTime.toISOString()}`,
+            },
+          );
+        }
+
+        // Handle other HTTP errors
+        if (!response.ok) {
+          let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+          let errorData: { message?: string } | null = null;
+
+          try {
+            errorData = (await response.json()) as { message?: string };
+            if (errorData?.message) {
+              errorMessage = errorData.message;
+            }
+          } catch {
+            // Response not JSON, use status text
+          }
+
+          const githubError = new Error(errorMessage) as Error & {
+            status?: number;
+            response?: unknown;
+          };
+          githubError.status = response.status;
+          githubError.response = errorData;
+
+          throw githubError;
+        }
+
+        // Parse response data
+        let data: T;
+        const contentType = response.headers.get("content-type") || "";
+
+        if (contentType.includes("application/json")) {
+          data = await response.json();
+        } else {
+          data = (await response.text()) as unknown as T;
+        }
+
+        return {
+          data,
+          status: response.status,
+          headers: responseHeaders,
+          url,
+          rateLimit,
+        };
+      } catch (error) {
+        retries++;
+
+        // Don't retry on certain errors
+        const errorObj = error as Error & { name?: string; status?: number };
+        if (
+          errorObj.name === "AbortError" ||
+          errorObj.status === 401 ||
+          errorObj.status === 403 ||
+          errorObj.status === 404 ||
+          retries > maxRetries
+        ) {
+          // Convert to appropriate error type
+          if (errorObj.name === "AbortError") {
+            throw ErrorFactory.github(
+              ERROR_CODES.GITHUB_API_ERROR,
+              "GITHUB_API_ERROR: Request timeout",
+              { timeout, originalError: error },
+            );
+          }
+
+          throw error;
+        }
+
+        // Wait before retry (exponential backoff)
+        const delay = Math.min(1000 * 2 ** (retries - 1), 10000);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      }
+    }
+
+    throw ErrorFactory.github(
+      ERROR_CODES.GITHUB_API_ERROR,
+      "GITHUB_API_ERROR: Maximum retries exceeded",
+      { maxRetries, endpoint },
+    );
   }
 
   async *paginate<T>(
@@ -494,7 +799,7 @@ class DefaultGitHubAPI implements GitHubAPIInterface {
 
   async getRateLimit(): Promise<GitHubRateLimit> {
     try {
-      const response = await this.request<any>("/rate_limit");
+      const response = await this.request<GitHubRateLimitResponse>("/rate_limit");
       const core = response.data.resources?.core || response.data;
 
       return {
@@ -519,7 +824,7 @@ class DefaultGitHubAPI implements GitHubAPIInterface {
       const expectedSignature = `sha256=${hmac.digest("hex")}`;
 
       return signature === expectedSignature;
-    } catch (error) {
+    } catch (_error) {
       return false;
     }
   }
@@ -594,7 +899,7 @@ export async function getRepositoryInfo(
   }
 
   try {
-    const response = await githubAPI.request<any>(`/repos/${owner}/${name}`);
+    const response = await githubAPI.request<GitHubRepositoryResponse>(`/repos/${owner}/${name}`);
     const repo = response.data;
 
     return {
@@ -620,7 +925,7 @@ export async function getRepositoryInfo(
       },
     };
   } catch (error) {
-    if ((error as any).status === 404) {
+    if ((error as GitHubError).status === 404) {
       throw ErrorFactory.github(
         ERROR_CODES.GITHUB_REPOSITORY_NOT_FOUND,
         `GITHUB_REPOSITORY_NOT_FOUND: Repository not found: ${owner}/${name}`,
@@ -692,7 +997,7 @@ export async function listRepositoryIssues(
 
     const endpoint = `/repos/${owner}/${name}/issues?${params.toString()}`;
 
-    for await (const page of githubAPI.paginate<any>(endpoint, {
+    for await (const page of githubAPI.paginate<GitHubIssueResponse>(endpoint, {
       perPage: options.perPage,
       page: options.page,
     })) {
@@ -747,10 +1052,12 @@ export async function getIssueDetails(
   const { owner, name } = parseRepositoryIdentifier(repositoryIdentifier);
 
   try {
-    const response = await githubAPI.request<any>(`/repos/${owner}/${name}/issues/${issueNumber}`);
+    const response = await githubAPI.request<GitHubIssueResponse>(
+      `/repos/${owner}/${name}/issues/${issueNumber}`,
+    );
     return transformIssue(response.data);
   } catch (error) {
-    if ((error as any).status === 404) {
+    if ((error as GitHubError).status === 404) {
       throw ErrorFactory.github(
         ERROR_CODES.GITHUB_REPOSITORY_NOT_FOUND,
         `GITHUB_REPOSITORY_NOT_FOUND: Issue #${issueNumber} not found in ${owner}/${name}`,
@@ -790,16 +1097,19 @@ export async function createIssue(
   const { owner, name } = parseRepositoryIdentifier(repositoryIdentifier);
 
   try {
-    const response = await githubAPI.request<any>(`/repos/${owner}/${name}/issues`, {
-      method: "POST",
-      body: {
-        title: options.title,
-        body: options.body || "",
-        labels: options.labels || [],
-        assignees: options.assignees || [],
-        milestone: options.milestone,
+    const response = await githubAPI.request<GitHubIssueResponse>(
+      `/repos/${owner}/${name}/issues`,
+      {
+        method: "POST",
+        body: {
+          title: options.title,
+          body: options.body || "",
+          labels: options.labels || [],
+          assignees: options.assignees || [],
+          milestone: options.milestone,
+        },
       },
-    });
+    );
 
     return {
       success: true,
@@ -855,17 +1165,20 @@ export async function createPullRequest(
   const { owner, name } = parseRepositoryIdentifier(repositoryIdentifier);
 
   try {
-    const response = await githubAPI.request<any>(`/repos/${owner}/${name}/pulls`, {
-      method: "POST",
-      body: {
-        title: options.title,
-        body: options.body || "",
-        head: options.head,
-        base: options.base,
-        draft: options.draft || false,
-        maintainer_can_modify: options.maintainerCanModify !== false,
+    const response = await githubAPI.request<GitHubPullRequestResponse>(
+      `/repos/${owner}/${name}/pulls`,
+      {
+        method: "POST",
+        body: {
+          title: options.title,
+          body: options.body || "",
+          head: options.head,
+          base: options.base,
+          draft: options.draft || false,
+          maintainer_can_modify: options.maintainerCanModify !== false,
+        },
       },
-    });
+    );
 
     return {
       success: true,
@@ -894,8 +1207,8 @@ export async function cloneRepository(
   repositoryUrl: string,
   options: CloneRepositoryOptions = {},
   githubAPI: GitHubAPIInterface = defaultGitHubAPI,
-  gitOps?: any,
-  fileSystem?: any,
+  gitOps?: GitOperationsInterface,
+  fileSystem?: FileSystemInterface,
 ): Promise<RepositoryCloneResult> {
   // Validate URL
   if (!repositoryUrl || repositoryUrl.trim().length === 0) {
@@ -921,7 +1234,12 @@ export async function cloneRepository(
   const targetPath = options.targetPath || `./repositories/${repoInfo.name}`;
 
   // Check if target path exists
-  if (fileSystem && (await fileSystem.exists(targetPath))) {
+  if (
+    fileSystem &&
+    "exists" in fileSystem &&
+    typeof fileSystem.exists === "function" &&
+    (await (fileSystem.exists as (path: string) => Promise<boolean>)(targetPath))
+  ) {
     throw ErrorFactory.github(
       ERROR_CODES.FILE_ALREADY_EXISTS,
       `FILE_ALREADY_EXISTS: Target path already exists: ${targetPath}`,
@@ -932,7 +1250,15 @@ export async function cloneRepository(
   try {
     // Perform Git clone operation
     const cloneResult = gitOps
-      ? await gitOps.clone(repositoryUrl, targetPath, {
+      ? await (
+          gitOps as GitOperationsInterface & {
+            clone: (
+              url: string,
+              path: string,
+              options: { branch?: string; depth?: number; recursive?: boolean },
+            ) => Promise<{ branch: string; commit: string }>;
+          }
+        ).clone(repositoryUrl, targetPath, {
           branch: options.branch,
           depth: options.depth,
           recursive: options.recursive,
@@ -948,8 +1274,8 @@ export async function cloneRepository(
       success: true,
       path: targetPath,
       repository: { ...repoInfo, path: targetPath },
-      branch: cloneResult.branch,
-      commit: cloneResult.commit,
+      branch: (cloneResult as { branch: string; commit: string }).branch,
+      commit: (cloneResult as { branch: string; commit: string }).commit,
     };
   } catch (error) {
     throw ErrorFactory.github(
@@ -993,7 +1319,7 @@ export async function validateWebhookSignature(
 
     return true;
   } catch (error) {
-    if ((error as any).code === ERROR_CODES.GITHUB_PERMISSION_DENIED) {
+    if ((error as GitHubError).code === ERROR_CODES.GITHUB_PERMISSION_DENIED) {
       throw error;
     }
     throw ErrorFactory.github(
@@ -1030,108 +1356,214 @@ function parseRepositoryIdentifier(identifier: string): { owner: string; name: s
 /**
  * Transform GitHub API issue response to internal format.
  */
-function transformIssue(issue: any): GitHubIssueInfo {
+function transformIssue(issue: unknown): GitHubIssueInfo {
+  const typedIssue = issue as {
+    id: number;
+    number: number;
+    title: string;
+    body: string | null;
+    state: "open" | "closed";
+    labels?: Array<{ id: number; name: string; color: string; description?: string }>;
+    assignees?: Array<{ id: number; login: string; avatar_url: string; url: string; type: string }>;
+    user: { id: number; login: string; avatar_url: string; url: string; type: string };
+    milestone?: {
+      id: number;
+      number: number;
+      title: string;
+      description?: string;
+      state: "open" | "closed";
+      due_on?: string;
+      created_at: string;
+      updated_at: string;
+      closed_at?: string;
+    };
+    created_at: string;
+    updated_at: string;
+    closed_at?: string;
+    comments: number;
+    html_url: string;
+  };
   return {
-    id: issue.id.toString(),
-    number: issue.number,
-    title: issue.title,
-    body: issue.body || "",
-    state: issue.state,
+    id: typedIssue.id.toString(),
+    number: typedIssue.number,
+    title: typedIssue.title,
+    body: typedIssue.body || "",
+    state: typedIssue.state,
     labels:
-      issue.labels?.map((label: any) => ({
+      typedIssue.labels?.map((label) => ({
         id: label.id.toString(),
         name: label.name,
         color: label.color,
         description: label.description,
       })) || [],
-    assignees: issue.assignees?.map((user: any) => transformUser(user)) || [],
-    milestone: issue.milestone ? transformMilestone(issue.milestone) : undefined,
-    author: transformUser(issue.user),
-    createdAt: new Date(issue.created_at),
-    updatedAt: new Date(issue.updated_at),
-    closedAt: issue.closed_at ? new Date(issue.closed_at) : undefined,
-    comments: issue.comments || 0,
-    url: issue.html_url,
+    assignees: typedIssue.assignees?.map((user) => transformUser(user)) || [],
+    milestone: typedIssue.milestone ? transformMilestone(typedIssue.milestone) : undefined,
+    author: transformUser(typedIssue.user),
+    createdAt: new Date(typedIssue.created_at),
+    updatedAt: new Date(typedIssue.updated_at),
+    closedAt: typedIssue.closed_at ? new Date(typedIssue.closed_at) : undefined,
+    comments: typedIssue.comments || 0,
+    url: typedIssue.html_url,
   };
 }
 
 /**
  * Transform GitHub API pull request response to internal format.
  */
-function transformPullRequest(pr: any): GitHubPullRequestInfo {
-  return {
-    id: pr.id.toString(),
-    number: pr.number,
-    title: pr.title,
-    body: pr.body || "",
-    state: pr.state,
+function transformPullRequest(pr: unknown): GitHubPullRequestInfo {
+  const typedPr = pr as {
+    id: number;
+    number: number;
+    title: string;
+    body: string | null;
+    state: "open" | "closed" | "merged";
     head: {
-      ref: pr.head.ref,
-      sha: pr.head.sha,
+      ref: string;
+      sha: string;
+      repo: {
+        id: number;
+        name: string;
+        owner: { id: number; login: string; avatar_url: string; url: string; type: string };
+      };
+      user: { id: number; login: string; avatar_url: string; url: string; type: string };
+    };
+    base: {
+      ref: string;
+      sha: string;
+      repo: {
+        id: number;
+        name: string;
+        owner: { id: number; login: string; avatar_url: string; url: string; type: string };
+      };
+      user: { id: number; login: string; avatar_url: string; url: string; type: string };
+    };
+    user: { id: number; login: string; avatar_url: string; url: string; type: string };
+    assignees?: Array<{ id: number; login: string; avatar_url: string; url: string; type: string }>;
+    requested_reviewers?: Array<{
+      id: number;
+      login: string;
+      avatar_url: string;
+      url: string;
+      type: string;
+    }>;
+    labels?: Array<{ id: number; name: string; color: string; description?: string }>;
+    milestone?: {
+      id: number;
+      number: number;
+      title: string;
+      description?: string;
+      state: "open" | "closed";
+      due_on?: string;
+      created_at: string;
+      updated_at: string;
+      closed_at?: string;
+    };
+    mergeable: boolean | null;
+    rebaseable: boolean | null;
+    draft: boolean;
+    created_at: string;
+    updated_at: string;
+    merged_at?: string;
+    closed_at?: string;
+    commits: number;
+    additions: number;
+    deletions: number;
+    changed_files: number;
+    html_url: string;
+  };
+  return {
+    id: typedPr.id.toString(),
+    number: typedPr.number,
+    title: typedPr.title,
+    body: typedPr.body || "",
+    state: typedPr.state,
+    head: {
+      ref: typedPr.head.ref,
+      sha: typedPr.head.sha,
       repository: {} as RepositoryInfo, // Simplified for mock
-      user: transformUser(pr.head.user),
+      user: transformUser(typedPr.head.repo?.owner || typedPr.user),
     },
     base: {
-      ref: pr.base.ref,
-      sha: pr.base.sha,
+      ref: typedPr.base.ref,
+      sha: typedPr.base.sha,
       repository: {} as RepositoryInfo, // Simplified for mock
-      user: transformUser(pr.base.user),
+      user: transformUser(typedPr.base.repo?.owner || typedPr.user),
     },
-    author: transformUser(pr.user),
-    assignees: pr.assignees?.map((user: any) => transformUser(user)) || [],
-    requestedReviewers: pr.requested_reviewers?.map((user: any) => transformUser(user)) || [],
+    author: transformUser(typedPr.user),
+    assignees: typedPr.assignees?.map((user) => transformUser(user)) || [],
+    requestedReviewers: typedPr.requested_reviewers?.map((user) => transformUser(user)) || [],
     labels:
-      pr.labels?.map((label: any) => ({
+      typedPr.labels?.map((label) => ({
         id: label.id.toString(),
         name: label.name,
         color: label.color,
         description: label.description,
       })) || [],
-    milestone: pr.milestone ? transformMilestone(pr.milestone) : undefined,
-    mergeable: pr.mergeable,
-    rebaseable: pr.rebaseable,
-    draft: pr.draft || false,
-    createdAt: new Date(pr.created_at),
-    updatedAt: new Date(pr.updated_at),
-    mergedAt: pr.merged_at ? new Date(pr.merged_at) : undefined,
-    closedAt: pr.closed_at ? new Date(pr.closed_at) : undefined,
-    commits: pr.commits || 0,
-    additions: pr.additions || 0,
-    deletions: pr.deletions || 0,
-    changedFiles: pr.changed_files || 0,
-    url: pr.html_url,
+    milestone: typedPr.milestone ? transformMilestone(typedPr.milestone) : undefined,
+    mergeable: typedPr.mergeable ?? null,
+    rebaseable: typedPr.rebaseable ?? null,
+    draft: typedPr.draft || false,
+    createdAt: new Date(typedPr.created_at),
+    updatedAt: new Date(typedPr.updated_at),
+    mergedAt: typedPr.merged_at ? new Date(typedPr.merged_at) : undefined,
+    closedAt: typedPr.closed_at ? new Date(typedPr.closed_at) : undefined,
+    commits: typedPr.commits || 0,
+    additions: typedPr.additions || 0,
+    deletions: typedPr.deletions || 0,
+    changedFiles: typedPr.changed_files || 0,
+    url: typedPr.html_url,
   };
 }
 
 /**
  * Transform GitHub API user response to internal format.
  */
-function transformUser(user: any): GitHubUser {
+function transformUser(user: unknown): GitHubUser {
+  const typedUser = user as {
+    id: number;
+    login: string;
+    name?: string;
+    email?: string;
+    avatar_url: string;
+    url: string;
+    type: string;
+  };
   return {
-    id: user.id.toString(),
-    login: user.login,
-    name: user.name,
-    email: user.email,
-    avatarUrl: user.avatar_url,
-    url: user.html_url,
-    type: user.type || "User",
+    id: typedUser.id.toString(),
+    login: typedUser.login,
+    name: typedUser.name,
+    email: typedUser.email,
+    avatarUrl: typedUser.avatar_url,
+    url: typedUser.url,
+    type: (typedUser.type as "User" | "Bot" | "Organization") || "User",
   };
 }
 
 /**
  * Transform GitHub API milestone response to internal format.
  */
-function transformMilestone(milestone: any): GitHubMilestone {
+function transformMilestone(milestone: unknown): GitHubMilestone {
+  const typedMilestone = milestone as {
+    id: number;
+    number: number;
+    title: string;
+    description?: string;
+    state: "open" | "closed";
+    due_on?: string;
+    created_at: string;
+    updated_at: string;
+    closed_at?: string;
+  };
   return {
-    id: milestone.id.toString(),
-    number: milestone.number,
-    title: milestone.title,
-    description: milestone.description,
-    state: milestone.state,
-    dueOn: milestone.due_on ? new Date(milestone.due_on) : undefined,
-    createdAt: new Date(milestone.created_at),
-    updatedAt: new Date(milestone.updated_at),
-    closedAt: milestone.closed_at ? new Date(milestone.closed_at) : undefined,
+    id: typedMilestone.id.toString(),
+    number: typedMilestone.number,
+    title: typedMilestone.title,
+    description: typedMilestone.description,
+    state: typedMilestone.state,
+    dueOn: typedMilestone.due_on ? new Date(typedMilestone.due_on) : undefined,
+    createdAt: new Date(typedMilestone.created_at),
+    updatedAt: new Date(typedMilestone.updated_at),
+    closedAt: typedMilestone.closed_at ? new Date(typedMilestone.closed_at) : undefined,
   };
 }
 
@@ -1144,10 +1576,13 @@ export async function updateIssueStatus(
 ): Promise<GitHubIssueInfo> {
   const { owner, name } = parseRepositoryIdentifier(repositoryIdentifier);
 
-  const response = await githubAPI.request<any>(`/repos/${owner}/${name}/issues/${issueNumber}`, {
-    method: "PATCH",
-    body: options,
-  });
+  const response = await githubAPI.request<GitHubIssueResponse>(
+    `/repos/${owner}/${name}/issues/${issueNumber}`,
+    {
+      method: "PATCH",
+      body: options,
+    },
+  );
 
   return transformIssue(response.data);
 }
@@ -1159,7 +1594,9 @@ export async function getPullRequestDetails(
 ): Promise<GitHubPullRequestInfo> {
   const { owner, name } = parseRepositoryIdentifier(repositoryIdentifier);
 
-  const response = await githubAPI.request<any>(`/repos/${owner}/${name}/pulls/${prNumber}`);
+  const response = await githubAPI.request<GitHubPullRequestResponse>(
+    `/repos/${owner}/${name}/pulls/${prNumber}`,
+  );
   return transformPullRequest(response.data);
 }
 
@@ -1171,10 +1608,13 @@ export async function updatePullRequestStatus(
 ): Promise<GitHubPullRequestInfo> {
   const { owner, name } = parseRepositoryIdentifier(repositoryIdentifier);
 
-  const response = await githubAPI.request<any>(`/repos/${owner}/${name}/pulls/${prNumber}`, {
-    method: "PATCH",
-    body: options,
-  });
+  const response = await githubAPI.request<GitHubPullRequestResponse>(
+    `/repos/${owner}/${name}/pulls/${prNumber}`,
+    {
+      method: "PATCH",
+      body: options,
+    },
+  );
 
   return transformPullRequest(response.data);
 }
@@ -1183,7 +1623,7 @@ export async function createRepository(
   options: CreateRepositoryOptions,
   githubAPI: GitHubAPIInterface = defaultGitHubAPI,
 ): Promise<RepositoryInfo> {
-  const response = await githubAPI.request<any>("/user/repos", {
+  const response = await githubAPI.request<GitHubRepositoryResponse>("/user/repos", {
     method: "POST",
     body: options,
   });
@@ -1206,10 +1646,12 @@ export async function searchRepositories(
   if (options.sort) params.set("sort", options.sort);
   if (options.order) params.set("order", options.order);
 
-  const response = await githubAPI.request<any>(`/search/repositories?${params.toString()}`);
+  const response = await githubAPI.request<{
+    items?: GitHubRepositoryResponse[];
+  }>(`/search/repositories?${params.toString()}`);
 
   return (
-    response.data.items?.map((repo: any) => ({
+    response.data.items?.map((repo) => ({
       owner: repo.owner.login,
       name: repo.name,
       path: "",
@@ -1217,4 +1659,183 @@ export async function searchRepositories(
       remoteUrl: repo.clone_url,
     })) || []
   );
+}
+
+/**
+ * GitHub API response types for type safety
+ */
+export interface GitHubError {
+  status: number;
+  message: string;
+  code?: string;
+}
+
+export interface GitHubUserResponse {
+  id: number;
+  login: string;
+  name?: string;
+  email?: string;
+  avatar_url: string;
+  html_url: string;
+  type: "User" | "Bot" | "Organization";
+}
+
+export interface GitHubRateLimitResponse {
+  resources?: {
+    core: {
+      limit: number;
+      remaining: number;
+      reset: number;
+      used: number;
+    };
+  };
+  limit?: number;
+  remaining?: number;
+  reset?: number;
+  used?: number;
+}
+
+export interface GitHubRepositoryResponse {
+  id: number;
+  node_id: string;
+  name: string;
+  full_name: string;
+  description?: string;
+  private: boolean;
+  fork: boolean;
+  html_url: string;
+  clone_url: string;
+  ssh_url: string;
+  default_branch: string;
+  owner: {
+    id: number;
+    login: string;
+    avatar_url: string;
+    html_url: string;
+    type: "User" | "Organization";
+  };
+  parent?: {
+    id: number;
+    name: string;
+    full_name: string;
+    default_branch: string;
+    clone_url: string;
+    owner: {
+      login: string;
+    };
+  };
+  created_at: string;
+  updated_at: string;
+  pushed_at: string;
+}
+
+export interface GitHubIssueResponse {
+  id: number;
+  number: number;
+  title: string;
+  body?: string;
+  state: "open" | "closed";
+  html_url: string;
+  created_at: string;
+  updated_at: string;
+  closed_at?: string;
+  pull_request?: { url: string }; // Issues can be PRs
+  user: {
+    id: number;
+    login: string;
+    avatar_url: string;
+    html_url: string;
+    type: "User" | "Bot";
+  };
+  labels?: Array<{
+    id: number;
+    name: string;
+    color: string;
+    description?: string;
+  }>;
+  assignees?: Array<{
+    id: number;
+    login: string;
+    avatar_url: string;
+    html_url: string;
+    type: "User" | "Bot";
+  }>;
+  milestone?: {
+    id: number;
+    number: number;
+    title: string;
+    description?: string;
+    state: "open" | "closed";
+    due_on?: string;
+    created_at: string;
+    updated_at: string;
+    closed_at?: string;
+  };
+}
+
+export interface GitHubPullRequestResponse {
+  data: {
+    id: number;
+    number: number;
+    title: string;
+    body?: string;
+    state: "open" | "closed" | "merged";
+    html_url: string;
+    created_at: string;
+    updated_at: string;
+    closed_at?: string;
+    merged_at?: string;
+    merge_commit_sha?: string;
+    user: {
+      id: number;
+      login: string;
+      avatar_url: string;
+      html_url: string;
+      type: "User" | "Bot";
+    };
+    head: {
+      ref: string;
+      sha: string;
+      repo: {
+        id: number;
+        name: string;
+        full_name: string;
+        owner: {
+          login: string;
+        };
+      };
+    };
+    base: {
+      ref: string;
+      sha: string;
+      repo: {
+        id: number;
+        name: string;
+        full_name: string;
+        owner: {
+          login: string;
+        };
+      };
+    };
+    assignees?: Array<{
+      id: number;
+      login: string;
+      avatar_url: string;
+      html_url: string;
+      type: "User" | "Bot";
+    }>;
+    requested_reviewers?: Array<{
+      id: number;
+      login: string;
+      avatar_url: string;
+      html_url: string;
+      type: "User" | "Bot";
+    }>;
+    labels?: Array<{
+      id: number;
+      name: string;
+      color: string;
+      description?: string;
+    }>;
+  };
 }

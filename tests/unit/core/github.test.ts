@@ -7,6 +7,7 @@
  */
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { GitOperationsInterface, GitWorktreeInfo } from "../../../src/core/worktree";
 import { ERROR_CODES } from "../../../src/shared/errors";
 import type { GitBranchInfo, RepositoryInfo } from "../../../src/shared/types";
 
@@ -53,12 +54,143 @@ import {
   validateWebhookSignature,
 } from "../../../src/core/github";
 
+// Mock data interfaces
+interface MockRepositoryData {
+  id: string;
+  node_id: string;
+  name: string;
+  full_name: string;
+  private: boolean;
+  owner: {
+    login: string;
+    id: string;
+    avatar_url: string;
+    html_url: string;
+    type: string;
+  };
+  html_url: string;
+  description: string;
+  fork: boolean;
+  created_at: string;
+  updated_at: string;
+  pushed_at: string;
+  clone_url: string;
+  default_branch: string;
+  ssh_url?: string;
+  stargazers_count?: number;
+  forks_count?: number;
+  language?: string;
+  topics?: string[];
+}
+
+interface MockIssueData {
+  id: string;
+  number: number;
+  title: string;
+  body: string;
+  state: "open" | "closed";
+  labels: Array<{
+    id: string;
+    name: string;
+    color: string;
+    description?: string;
+  }>;
+  assignees: Array<{
+    login: string;
+    id: string;
+    avatar_url: string;
+    html_url: string;
+    type: string;
+  }>;
+  user: {
+    login: string;
+    id: string;
+    avatar_url: string;
+    html_url: string;
+    type: string;
+  };
+  created_at: string;
+  updated_at: string;
+  html_url: string;
+  comments: number;
+  milestone?: null;
+}
+
+interface MockPullRequestData {
+  id: string;
+  number: number;
+  title: string;
+  body: string;
+  state: "open" | "closed" | "merged";
+  head: {
+    ref: string;
+    sha: string;
+    user: {
+      login: string;
+      id: string;
+      avatar_url: string;
+      html_url: string;
+      type: string;
+    };
+  };
+  base: {
+    ref: string;
+    sha: string;
+    user: {
+      login: string;
+      id: string;
+      avatar_url: string;
+      html_url: string;
+      type: string;
+    };
+  };
+  user: {
+    login: string;
+    id: string;
+    avatar_url: string;
+    html_url: string;
+    type: string;
+  };
+  assignees: Array<{
+    login: string;
+    id: string;
+    avatar_url: string;
+    html_url: string;
+    type: string;
+  }>;
+  requested_reviewers: Array<{
+    login: string;
+    id: string;
+    avatar_url: string;
+    html_url: string;
+    type: string;
+  }>;
+  labels: Array<{
+    id: string;
+    name: string;
+    color: string;
+    description?: string;
+  }>;
+  draft: boolean;
+  mergeable: boolean;
+  rebaseable: boolean;
+  created_at: string;
+  updated_at: string;
+  merged_at?: string;
+  closed_at?: string;
+  commits: number;
+  additions: number;
+  deletions: number;
+  changed_files: number;
+  html_url: string;
+}
+
 // Mock GitHub API for testing
 class MockGitHubAPI implements GitHubAPIInterface {
   private authState: GitHubAuthResult | null = null;
-  private repositories = new Map<string, any>();
-  private issues = new Map<string, any>();
-  private pullRequests = new Map<string, any>();
+  private repositories = new Map<string, MockRepositoryData>();
+  private issues = new Map<string, MockIssueData>();
+  private pullRequests = new Map<string, MockPullRequestData>();
   private rateLimit: GitHubRateLimit = {
     limit: 5000,
     remaining: 4999,
@@ -77,15 +209,15 @@ class MockGitHubAPI implements GitHubAPIInterface {
     this.authState = authResult;
   }
 
-  setRepository(identifier: string, repository: any): void {
+  setRepository(identifier: string, repository: MockRepositoryData): void {
     this.repositories.set(identifier, repository);
   }
 
-  setIssue(repoIdentifier: string, issueNumber: number, issue: any): void {
+  setIssue(repoIdentifier: string, issueNumber: number, issue: MockIssueData): void {
     this.issues.set(`${repoIdentifier}:${issueNumber}`, issue);
   }
 
-  setPullRequest(repoIdentifier: string, prNumber: number, pr: any): void {
+  setPullRequest(repoIdentifier: string, prNumber: number, pr: MockPullRequestData): void {
     this.pullRequests.set(`${repoIdentifier}:${prNumber}`, pr);
   }
 
@@ -99,6 +231,10 @@ class MockGitHubAPI implements GitHubAPIInterface {
 
   getCallLog(): Array<{ method: string; args: unknown[] }> {
     return [...this.callLog];
+  }
+
+  getRepository(identifier: string): MockRepositoryData | undefined {
+    return this.repositories.get(identifier);
   }
 
   reset(): void {
@@ -133,6 +269,9 @@ class MockGitHubAPI implements GitHubAPIInterface {
       description: "This your first repo!",
       fork: false,
       default_branch: "main",
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      pushed_at: new Date().toISOString(),
       clone_url: "https://github.com/octocat/Hello-World.git",
       ssh_url: "git@github.com:octocat/Hello-World.git",
       stargazers_count: 80,
@@ -155,6 +294,7 @@ class MockGitHubAPI implements GitHubAPIInterface {
           id: "1",
           avatar_url: "https://github.com/images/error/octocat_happy.gif",
           html_url: "https://github.com/octocat",
+          type: "User",
         },
       ],
       milestone: null,
@@ -163,10 +303,10 @@ class MockGitHubAPI implements GitHubAPIInterface {
         id: "1",
         avatar_url: "https://github.com/images/error/octocat_happy.gif",
         html_url: "https://github.com/octocat",
+        type: "User",
       },
       created_at: "2023-01-01T00:00:00Z",
       updated_at: "2023-01-01T00:00:00Z",
-      closed_at: null,
       comments: 5,
       html_url: "https://github.com/octocat/Hello-World/issues/1",
     });
@@ -226,8 +366,8 @@ class MockGitHubAPI implements GitHubAPIInterface {
           const issueData = this.issues.get(`${repoIdentifier}:${issueNumber}`);
 
           if (!issueData) {
-            const notFoundError = new Error("Not Found");
-            (notFoundError as any).status = 404;
+            const notFoundError = new Error("Not Found") as Error & { status: number };
+            notFoundError.status = 404;
             throw notFoundError;
           }
 
@@ -245,17 +385,47 @@ class MockGitHubAPI implements GitHubAPIInterface {
           const newIssue = {
             id: "999",
             number: 999,
-            title: (options.body as any)?.title || "New Issue",
-            body: (options.body as any)?.body || "",
-            state: "open",
+            title:
+              (
+                options.body as {
+                  title?: string;
+                  body?: string;
+                  labels?: string[];
+                  assignees?: string[];
+                }
+              )?.title || "New Issue",
+            body:
+              (
+                options.body as {
+                  title?: string;
+                  body?: string;
+                  labels?: string[];
+                  assignees?: string[];
+                }
+              )?.body || "",
+            state: "open" as const,
             labels:
-              (options.body as any)?.labels?.map((name: string) => ({
+              (
+                options.body as {
+                  title?: string;
+                  body?: string;
+                  labels?: string[];
+                  assignees?: string[];
+                }
+              )?.labels?.map((name: string) => ({
                 id: "999",
                 name,
                 color: "d73a4a",
               })) || [],
             assignees:
-              (options.body as any)?.assignees?.map((login: string) => ({
+              (
+                options.body as {
+                  title?: string;
+                  body?: string;
+                  labels?: string[];
+                  assignees?: string[];
+                }
+              )?.assignees?.map((login: string) => ({
                 login,
                 id: "999",
                 avatar_url: "https://github.com/images/error/octocat_happy.gif",
@@ -286,11 +456,38 @@ class MockGitHubAPI implements GitHubAPIInterface {
           const newPR = {
             id: "999",
             number: 999,
-            title: (options.body as any)?.title || "New PR",
-            body: (options.body as any)?.body || "",
-            state: "open",
+            title:
+              (
+                options.body as {
+                  title?: string;
+                  body?: string;
+                  head?: string;
+                  base?: string;
+                  draft?: boolean;
+                }
+              )?.title || "New PR",
+            body:
+              (
+                options.body as {
+                  title?: string;
+                  body?: string;
+                  head?: string;
+                  base?: string;
+                  draft?: boolean;
+                }
+              )?.body || "",
+            state: "open" as const,
             head: {
-              ref: (options.body as any)?.head || "feature/test",
+              ref:
+                (
+                  options.body as {
+                    title?: string;
+                    body?: string;
+                    head?: string;
+                    base?: string;
+                    draft?: boolean;
+                  }
+                )?.head || "feature/test",
               sha: "abc123",
               user: {
                 login: "octocat",
@@ -300,7 +497,16 @@ class MockGitHubAPI implements GitHubAPIInterface {
               },
             },
             base: {
-              ref: (options.body as any)?.base || "main",
+              ref:
+                (
+                  options.body as {
+                    title?: string;
+                    body?: string;
+                    head?: string;
+                    base?: string;
+                    draft?: boolean;
+                  }
+                )?.base || "main",
               sha: "def456",
               user: {
                 login: "octocat",
@@ -318,7 +524,16 @@ class MockGitHubAPI implements GitHubAPIInterface {
             assignees: [],
             requested_reviewers: [],
             labels: [],
-            draft: (options.body as any)?.draft || false,
+            draft:
+              (
+                options.body as {
+                  title?: string;
+                  body?: string;
+                  head?: string;
+                  base?: string;
+                  draft?: boolean;
+                }
+              )?.draft || false,
             mergeable: true,
             rebaseable: true,
             created_at: new Date().toISOString(),
@@ -342,8 +557,8 @@ class MockGitHubAPI implements GitHubAPIInterface {
         const repoData = this.repositories.get(repoIdentifier);
 
         if (!repoData) {
-          const notFoundError = new Error("Not Found");
-          (notFoundError as any).status = 404;
+          const notFoundError = new Error("Not Found") as Error & { status: number };
+          notFoundError.status = 404;
           throw notFoundError;
         }
 
@@ -454,7 +669,7 @@ class MockGitHubAPI implements GitHubAPIInterface {
 }
 
 // Mock Git Operations for integration testing
-class MockGitOperations {
+class MockGitOperations implements GitOperationsInterface {
   private callLog: Array<{ method: string; args: unknown[] }> = [];
   private shouldThrow = new Map<string, Error>();
 
@@ -471,18 +686,72 @@ class MockGitOperations {
     this.shouldThrow.clear();
   }
 
-  async clone(url: string, path: string, options?: any): Promise<any> {
+  async clone(
+    url: string,
+    path: string,
+    options?: { branch?: string; depth?: number; recursive?: boolean },
+  ): Promise<{ branch: string; commit: string }> {
     this.callLog.push({ method: "clone", args: [url, path, options] });
 
     const error = this.shouldThrow.get(`clone:${path}`);
     if (error) throw error;
 
     return {
-      success: true,
-      path,
       branch: options?.branch || "main",
       commit: "abc123def456",
     };
+  }
+
+  // Add the missing GitOperationsInterface methods
+  async worktreeAdd(path: string, branch?: string): Promise<void> {
+    this.callLog.push({ method: "worktreeAdd", args: [path, branch] });
+  }
+
+  async worktreeRemove(path: string, force?: boolean): Promise<void> {
+    this.callLog.push({ method: "worktreeRemove", args: [path, force] });
+  }
+
+  async worktreeList(): Promise<GitWorktreeInfo[]> {
+    this.callLog.push({ method: "worktreeList", args: [] });
+    return [];
+  }
+
+  async worktreePrune(): Promise<void> {
+    this.callLog.push({ method: "worktreePrune", args: [] });
+  }
+
+  async isWorktree(path: string): Promise<boolean> {
+    this.callLog.push({ method: "isWorktree", args: [path] });
+    return false;
+  }
+
+  async getWorktreeRoot(path: string): Promise<string> {
+    this.callLog.push({ method: "getWorktreeRoot", args: [path] });
+    return path;
+  }
+
+  async getCurrentBranch(path: string): Promise<string> {
+    this.callLog.push({ method: "getCurrentBranch", args: [path] });
+    return "main";
+  }
+
+  async hasUncommittedChanges(path: string): Promise<boolean> {
+    this.callLog.push({ method: "hasUncommittedChanges", args: [path] });
+    return false;
+  }
+
+  async createBranch(name: string, startPoint?: string): Promise<void> {
+    this.callLog.push({ method: "createBranch", args: [name, startPoint] });
+  }
+
+  async branchExists(name: string): Promise<boolean> {
+    this.callLog.push({ method: "branchExists", args: [name] });
+    return true;
+  }
+
+  async getUncommittedFiles(path: string): Promise<string[]> {
+    this.callLog.push({ method: "getUncommittedFiles", args: [path] });
+    return [];
   }
 }
 
@@ -516,6 +785,40 @@ class MockFileSystem {
   async mkdir(path: string): Promise<void> {
     this.callLog.push({ method: "mkdir", args: [path] });
     this.files.add(path);
+  }
+
+  // Additional FileSystemInterface methods
+  async access(): Promise<void> {
+    // Mock implementation
+  }
+
+  async copyFile(): Promise<void> {
+    // Mock implementation
+  }
+
+  async readFile(): Promise<string> {
+    return "";
+  }
+
+  async writeFile(): Promise<void> {
+    // Mock implementation
+  }
+
+  async readdir(): Promise<string[]> {
+    return [];
+  }
+
+  async stat(): Promise<{ isDirectory(): boolean; isFile(): boolean; mtime: Date; size: number }> {
+    return {
+      isDirectory: () => false,
+      isFile: () => true,
+      mtime: new Date(),
+      size: 0,
+    };
+  }
+
+  async unlink(): Promise<void> {
+    // Mock implementation
   }
 }
 
@@ -624,8 +927,10 @@ describe("core-github", () => {
 
     it("should handle private repository access", async () => {
       // Arrange
-      const privateRepo = {
-        ...mockGitHubAPI["repositories"].get("octocat/Hello-World"),
+      const existingRepo = mockGitHubAPI.getRepository("octocat/Hello-World");
+      if (!existingRepo) throw new Error("Test setup error: Repository not found");
+      const privateRepo: MockRepositoryData = {
+        ...existingRepo,
         private: true,
       };
       mockGitHubAPI.setRepository("octocat/private-repo", privateRepo);
@@ -719,7 +1024,13 @@ describe("core-github", () => {
         state: "open",
         labels: [{ id: "1", name: "bug", color: "d73a4a" }],
         assignees: [],
-        user: { login: "octocat", id: "1" },
+        user: {
+          login: "octocat",
+          id: "1",
+          avatar_url: "https://github.com/images/error/octocat_happy.gif",
+          html_url: "https://github.com/octocat",
+          type: "User",
+        },
         created_at: "2023-01-01T00:00:00Z",
         updated_at: "2023-01-01T00:00:00Z",
         comments: 0,
@@ -788,12 +1099,25 @@ describe("core-github", () => {
         body: "I'm having a problem with this.",
         state: "open",
         labels: [{ id: "1", name: "bug", color: "d73a4a" }],
-        assignees: [{ login: "octocat", id: "1" }],
+        assignees: [
+          {
+            login: "octocat",
+            id: "1",
+            avatar_url: "https://github.com/images/error/octocat_happy.gif",
+            html_url: "https://github.com/octocat",
+            type: "User",
+          },
+        ],
         milestone: null,
-        user: { login: "octocat", id: "1" },
+        user: {
+          login: "octocat",
+          id: "1",
+          avatar_url: "https://github.com/images/error/octocat_happy.gif",
+          html_url: "https://github.com/octocat",
+          type: "User",
+        },
         created_at: "2023-01-01T00:00:00Z",
         updated_at: "2023-01-01T00:00:00Z",
-        closed_at: null,
         comments: 5,
         html_url: "https://github.com/octocat/Hello-World/issues/1",
       });
@@ -906,8 +1230,10 @@ describe("core-github", () => {
       };
 
       // Mock existing PR error
-      const duplicateError = new Error("A pull request already exists");
-      (duplicateError as any).status = 422;
+      const duplicateError = new Error("A pull request already exists") as Error & {
+        status: number;
+      };
+      duplicateError.status = 422;
       mockGitHubAPI.setError("request", "/repos/octocat/Hello-World/pulls", duplicateError);
 
       // Act & Assert
@@ -950,7 +1276,7 @@ describe("core-github", () => {
         "https://github.com/octocat/Hello-World.git",
         options,
         mockGitHubAPI,
-        mockGitOps,
+        mockGitOps as unknown as GitOperationsInterface,
         mockFileSystem,
       );
 
@@ -978,7 +1304,7 @@ describe("core-github", () => {
           "https://github.com/octocat/Hello-World.git",
           options,
           mockGitHubAPI,
-          mockGitOps,
+          mockGitOps as unknown as GitOperationsInterface,
           mockFileSystem,
         ),
       ).rejects.toThrow("FILE_ALREADY_EXISTS");
@@ -987,11 +1313,23 @@ describe("core-github", () => {
     it("should validate repository URL", async () => {
       // Act & Assert
       await expect(
-        cloneRepository("", {}, mockGitHubAPI, mockGitOps, mockFileSystem),
+        cloneRepository(
+          "",
+          {},
+          mockGitHubAPI,
+          mockGitOps as unknown as GitOperationsInterface,
+          mockFileSystem,
+        ),
       ).rejects.toThrow("validation");
 
       await expect(
-        cloneRepository("invalid-url", {}, mockGitHubAPI, mockGitOps, mockFileSystem),
+        cloneRepository(
+          "invalid-url",
+          {},
+          mockGitHubAPI,
+          mockGitOps as unknown as GitOperationsInterface,
+          mockFileSystem,
+        ),
       ).rejects.toThrow("validation");
     });
   });

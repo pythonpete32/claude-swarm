@@ -5,14 +5,10 @@
  * session management, and intelligent code generation across all Claude Swarm operations.
  */
 
-import { exec, spawn } from "node:child_process";
-import { createHash } from "node:crypto";
-import { promises as fs } from "node:fs";
-import * as path from "node:path";
+import { type ChildProcess, exec, spawn } from "node:child_process";
 import { promisify } from "node:util";
 
 import { ERROR_CODES, ErrorFactory } from "../shared/errors";
-import { CommonValidators } from "../shared/validation";
 import type { FileSystemInterface, PathInterface } from "./files";
 import { defaultFileSystem, defaultPath } from "./files";
 
@@ -181,8 +177,11 @@ export interface SessionDiscoveryOptions {
  * Process operations interface for dependency injection
  */
 export interface ProcessOperationsInterface {
-  spawn(command: string, args: string[], options?: any): Promise<any>;
-  exec(command: string, options?: any): Promise<{ stdout: string; stderr: string }>;
+  spawn(command: string, args: string[], options?: Record<string, unknown>): Promise<ChildProcess>;
+  exec(
+    command: string,
+    options?: Record<string, unknown>,
+  ): Promise<{ stdout: string; stderr: string }>;
   kill(pid: number, signal?: string): Promise<boolean>;
   findProcesses(pattern: string): Promise<ProcessInfo[]>;
   isProcessRunning(pid: number): Promise<boolean>;
@@ -264,14 +263,18 @@ export interface ContextHandleResult {
  * Default process operations implementation
  */
 class DefaultProcessOperations implements ProcessOperationsInterface {
-  async spawn(command: string, args: string[], options: any = {}): Promise<any> {
+  async spawn(
+    command: string,
+    args: string[],
+    options: Record<string, unknown> = {},
+  ): Promise<ChildProcess> {
     return new Promise((resolve, reject) => {
       const child = spawn(command, args, {
         stdio: ["pipe", "pipe", "pipe"],
         ...options,
       });
 
-      const timeout = options.timeout || 30000;
+      const timeout = (options.timeout as number) || 30000;
       const timer = setTimeout(() => {
         child.kill();
         reject(new Error(`Process timeout after ${timeout}ms`));
@@ -289,26 +292,25 @@ class DefaultProcessOperations implements ProcessOperationsInterface {
     });
   }
 
-  async exec(command: string, options: any = {}): Promise<{ stdout: string; stderr: string }> {
-    try {
-      const result = await execAsync(command, {
-        timeout: options.timeout || 10000,
-        ...options,
-      });
-      return {
-        stdout: result.stdout.toString(),
-        stderr: result.stderr.toString(),
-      };
-    } catch (error) {
-      throw error;
-    }
+  async exec(
+    command: string,
+    options: Record<string, unknown> = {},
+  ): Promise<{ stdout: string; stderr: string }> {
+    const result = await execAsync(command, {
+      timeout: (options.timeout as number) || 10000,
+      ...options,
+    });
+    return {
+      stdout: result.stdout.toString(),
+      stderr: result.stderr.toString(),
+    };
   }
 
   async kill(pid: number, signal = "SIGTERM"): Promise<boolean> {
     try {
       process.kill(pid, signal);
       return true;
-    } catch (error) {
+    } catch (_error) {
       return false;
     }
   }
@@ -333,7 +335,7 @@ class DefaultProcessOperations implements ProcessOperationsInterface {
       }
 
       return processes;
-    } catch (error) {
+    } catch (_error) {
       return [];
     }
   }
@@ -342,7 +344,7 @@ class DefaultProcessOperations implements ProcessOperationsInterface {
     try {
       process.kill(pid, 0);
       return true;
-    } catch (error) {
+    } catch (_error) {
       return false;
     }
   }
@@ -368,7 +370,7 @@ class DefaultClaudeInterface implements ClaudeInterface {
   }
 
   async launch(config: ClaudeSessionConfig): Promise<ClaudeSession> {
-    const sessionId = `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const sessionId = `session-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
 
     try {
       // Spawn actual Claude Code process
@@ -403,7 +405,7 @@ class DefaultClaudeInterface implements ClaudeInterface {
 
       const session: ClaudeSession = {
         id: sessionId,
-        pid: childProcess.pid,
+        pid: childProcess.pid || 0,
         workspacePath: config.workspacePath,
         status: "launching",
         startTime: new Date(),
@@ -671,7 +673,7 @@ class DefaultClaudeInterface implements ClaudeInterface {
         compatible,
         issues,
       };
-    } catch (error) {
+    } catch (_error) {
       return {
         isInstalled: false,
         compatible: false,
@@ -680,7 +682,7 @@ class DefaultClaudeInterface implements ClaudeInterface {
     }
   }
 
-  private async waitForClaudeReady(sessionId: string, childProcess: any): Promise<void> {
+  private async waitForClaudeReady(sessionId: string, childProcess: ChildProcess): Promise<void> {
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
         reject(new Error("Claude session startup timeout"));
@@ -801,7 +803,7 @@ export async function validateClaudeInstallation(
     };
   } catch (error) {
     if (
-      (error as any).code === "EACCES" ||
+      (error as NodeJS.ErrnoException).code === "EACCES" ||
       (error as Error).message.includes("Permission denied")
     ) {
       throw ErrorFactory.claude(
@@ -838,7 +840,7 @@ export async function validateClaudeInstallation(
 export async function launchClaudeSession(
   config: ClaudeSessionConfig,
   claudeInterface: ClaudeInterface = defaultClaude,
-  processOps: ProcessOperationsInterface = defaultProcessOps,
+  _processOps: ProcessOperationsInterface = defaultProcessOps,
 ): Promise<LaunchSessionResult> {
   // Validate configuration
   if (!config.workspacePath || config.workspacePath.trim().length === 0) {
@@ -883,7 +885,7 @@ export async function launchClaudeSession(
  * @returns Session discovery result
  */
 export async function findActiveClaudeSessions(
-  claudeInterface: ClaudeInterface = defaultClaude,
+  _claudeInterface: ClaudeInterface = defaultClaude,
   processOps: ProcessOperationsInterface = defaultProcessOps,
   options: SessionDiscoveryOptions = {},
 ): Promise<SessionDiscoveryResult> {
@@ -1131,7 +1133,7 @@ Add project-specific information here.
           await fileSystem.access(sourcePath);
           await fileSystem.copyFile(sourcePath, contextPath);
           setupFiles.push(`.claude/${pathOps.basename(file)}`);
-        } catch (error) {
+        } catch (_error) {
           warnings.push(`Could not copy context file: ${file}`);
         }
       }
@@ -1154,7 +1156,7 @@ Add project-specific information here.
             // File doesn't exist, skip
           }
         }
-      } catch (error) {
+      } catch (_error) {
         warnings.push("Could not sync from repository");
       }
     }
@@ -1166,7 +1168,7 @@ Add project-specific information here.
         const gitignoreContent = await fileSystem.readFile(gitignorePath, "utf-8");
         if (!gitignoreContent.includes(".claude/")) {
           // Append to existing .gitignore
-          const updatedContent = gitignoreContent + "\n# Claude Code context\n.claude/\n";
+          const updatedContent = `${gitignoreContent}\n# Claude Code context\n.claude/\n`;
           await fileSystem.writeFile(gitignorePath, updatedContent, "utf-8");
           setupFiles.push(".gitignore (updated)");
         }
@@ -1234,7 +1236,7 @@ export async function configureClaudeSettings(
     const configPath = pathOps.join(claudeDirPath, "config.json");
 
     // Load existing config or create new one
-    let existingConfig: any = {};
+    let existingConfig: Record<string, unknown> = {};
     try {
       const configContent = await fileSystem.readFile(configPath, "utf-8");
       existingConfig = JSON.parse(configContent);
@@ -1247,11 +1249,11 @@ export async function configureClaudeSettings(
       ...existingConfig,
       ...config,
       modelPreferences: {
-        ...existingConfig.modelPreferences,
+        ...((existingConfig.modelPreferences as Record<string, unknown>) || {}),
         ...config.modelPreferences,
       },
       customPrompts: {
-        ...existingConfig.customPrompts,
+        ...((existingConfig.customPrompts as Record<string, unknown>) || {}),
         ...config.customPrompts,
       },
       lastUpdated: new Date().toISOString(),
@@ -1364,10 +1366,10 @@ export async function handleClaudeContext(
         for (const file of files) {
           if (file.endsWith(".json") || file.endsWith(".md") || file.endsWith(".ts")) {
             const contextFilePath = pathOps.join(claudeDirPath, file);
-            const stat = await fileSystem.stat(contextFilePath);
+            const _stat = await fileSystem.stat(contextFilePath);
 
             // Update timestamp for tracking
-            const now = new Date();
+            const _now = new Date();
             // Note: utimes is not in FileSystemInterface, we'll skip this operation
             // This is a non-critical operation for timestamp updates
           }
@@ -1590,7 +1592,13 @@ async function checkClaudeContextStatus(
           );
           const validStats = stats.filter(Boolean);
           if (validStats.length > 0) {
-            lastSyncTime = new Date(Math.max(...validStats.map((s) => s!.mtime.getTime())));
+            lastSyncTime = new Date(
+              Math.max(
+                ...validStats
+                  .map((s) => s?.mtime.getTime())
+                  .filter((time): time is number => time !== undefined),
+              ),
+            );
           }
         }
       } catch {
