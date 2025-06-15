@@ -1,0 +1,25 @@
+# Docs
+
+## Getting Started
+
+This guide will help you get started with Claude Codex.
+
+### Installation
+
+```bash
+npm install -g @claude-codex/cli
+# or
+bun add -g @claude-codex/cli
+```
+
+### Basic Usage
+
+```bash
+claude-codex --help
+```
+
+### Next Steps
+
+* Read the [API Reference](/api/core)
+* Check out the [CLI Reference](/api/cli)
+

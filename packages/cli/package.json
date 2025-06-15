@@ -1,0 +1,25 @@
+{
+  "name": "@claude-codex/cli",
+  "version": "0.1.0",
+  "type": "module",
+  "bin": {
+    "claude-codex": "./dist/cli.js"
+  },
+  "main": "dist/cli.js",
+  "module": "dist/cli.js",
+  "types": "dist/cli.d.ts",
+  "scripts": {
+    "dev": "bun --watch src/cli.ts",
+    "build": "tsc && chmod +x dist/cli.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@claude-codex/core": "workspace:*"
+  },
+  "devDependencies": {
+    "vitest": "^3.2.3"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  }
+}

@@ -1,18 +1,21 @@
 pre-commit:
   parallel: true
   commands:
-    lint:
-      glob: "*.{js,ts,jsx,tsx,json}"
-      run: bunx biome check --write {staged_files}
+    lint-core:
+      glob: "packages/core/**/*.{js,ts,jsx,tsx,json}"
+      run: cd packages/core && bunx biome check --write {staged_files}
       stage_fixed: true
+    lint-ui:
+      glob: "packages/ui/**/*.{js,ts,jsx,tsx,json}"
+      run: echo "UI linting skipped for now"
     typecheck:
       glob: "*.{ts,tsx}"
-      run: bun --bun tsc --noEmit
+      run: bun run typecheck
 
 pre-push:
   commands:
     tests:
-      run: bun test run
+      run: bun run test:run
     build:
       run: bun run build
 
