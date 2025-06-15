@@ -6,7 +6,11 @@
   "scripts": {
     "dev": "vite --port 42069",
     "build": "tsc -b && vite build",
-    "lint": "eslint .",
+    "lint": "bunx biome check .",
+    "lint:fix": "bunx biome check --write .",
+    "typecheck": "tsc --noEmit",
+    "test": "echo 'No tests configured for UI package'",
+    "test:run": "echo 'No tests configured for UI package'",
     "preview": "vite preview"
   },
   "dependencies": {

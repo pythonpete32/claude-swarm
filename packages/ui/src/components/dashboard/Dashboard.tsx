@@ -1,43 +1,44 @@
-import { useState } from 'react';
-import { Card, CardContent } from '../ui/card';
-import { Button } from '../ui/button';
-import { CreateInstanceForm } from './CreateInstanceForm';
-import { InstanceCard } from './InstanceCard';
-import { MOCK_INSTANCES } from '../../types/instance';
+import { useState } from "react";
+import { MOCK_INSTANCES } from "../../types/instance";
+import { Button } from "../ui/button";
+import { Card, CardContent } from "../ui/card";
+import { CreateInstanceForm } from "./CreateInstanceForm";
+import { InstanceCard } from "./InstanceCard";
 // import type { Instance } from '@/types/instance';
 
 interface DashboardProps {
-  filter?: 'active' | 'inactive' | 'all';
+  filter?: "active" | "inactive" | "all";
   searchQuery?: string;
   onInstanceAction?: (action: string, instanceId: string) => void;
 }
 
-export function Dashboard({ filter = 'all', searchQuery = '', onInstanceAction }: DashboardProps) {
-  const [activeFilter, setActiveFilter] = useState<'active' | 'inactive' | 'all'>(filter);
+export function Dashboard({ filter = "all", searchQuery = "", onInstanceAction }: DashboardProps) {
+  const [activeFilter, setActiveFilter] = useState<"active" | "inactive" | "all">(filter);
   const [expandedInstances, setExpandedInstances] = useState<Set<string>>(new Set());
 
   // Filter instances based on status and search
-  const filteredInstances = MOCK_INSTANCES.filter(instance => {
-    const matchesFilter = 
-      activeFilter === 'all' ||
-      (activeFilter === 'active' && instance.status === 'running') ||
-      (activeFilter === 'inactive' && instance.status === 'terminated');
-    
-    const matchesSearch = searchQuery === '' || 
+  const filteredInstances = MOCK_INSTANCES.filter((instance) => {
+    const matchesFilter =
+      activeFilter === "all" ||
+      (activeFilter === "active" && instance.status === "running") ||
+      (activeFilter === "inactive" && instance.status === "terminated");
+
+    const matchesSearch =
+      searchQuery === "" ||
       instance.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
       instance.issue_title?.toLowerCase().includes(searchQuery.toLowerCase());
-    
+
     return matchesFilter && matchesSearch;
   });
 
   const activeCounts = {
-    active: MOCK_INSTANCES.filter(i => i.status === 'running').length,
-    inactive: MOCK_INSTANCES.filter(i => i.status === 'terminated').length,
+    active: MOCK_INSTANCES.filter((i) => i.status === "running").length,
+    inactive: MOCK_INSTANCES.filter((i) => i.status === "terminated").length,
     all: MOCK_INSTANCES.length,
   };
 
   const handleToggleExpand = (instanceId: string) => {
-    setExpandedInstances(prev => {
+    setExpandedInstances((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(instanceId)) {
         newSet.delete(instanceId);
@@ -86,23 +87,23 @@ export function Dashboard({ filter = 'all', searchQuery = '', onInstanceAction }
       <div className="flex items-center gap-4">
         <div className="flex gap-2">
           <Button
-            variant={activeFilter === 'active' ? 'default' : 'outline'}
+            variant={activeFilter === "active" ? "default" : "outline"}
             size="sm"
-            onClick={() => setActiveFilter('active')}
+            onClick={() => setActiveFilter("active")}
           >
             Active ({activeCounts.active})
           </Button>
           <Button
-            variant={activeFilter === 'inactive' ? 'default' : 'outline'}
+            variant={activeFilter === "inactive" ? "default" : "outline"}
             size="sm"
-            onClick={() => setActiveFilter('inactive')}
+            onClick={() => setActiveFilter("inactive")}
           >
             Inactive ({activeCounts.inactive})
           </Button>
           <Button
-            variant={activeFilter === 'all' ? 'default' : 'outline'}
+            variant={activeFilter === "all" ? "default" : "outline"}
             size="sm"
-            onClick={() => setActiveFilter('all')}
+            onClick={() => setActiveFilter("all")}
           >
             All ({activeCounts.all})
           </Button>
@@ -121,7 +122,7 @@ export function Dashboard({ filter = 'all', searchQuery = '', onInstanceAction }
             </CardContent>
           </Card>
         ) : (
-          filteredInstances.map(instance => (
+          filteredInstances.map((instance) => (
             <InstanceCard
               key={instance.id}
               instance={instance}

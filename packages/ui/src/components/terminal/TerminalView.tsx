@@ -1,26 +1,26 @@
-import { useState, useEffect, useRef } from 'react';
-import { Terminal } from 'xterm';
-import { FitAddon } from '@xterm/addon-fit';
-import { WebLinksAddon } from '@xterm/addon-web-links';
-import 'xterm/css/xterm.css';
-import { Button } from '../ui/button';
-import { Card, CardContent, CardHeader } from '../ui/card';
-import { Badge } from '../ui/badge';
-import { Separator } from '../ui/separator';
-import { 
-  ArrowLeft, 
-  PanelRightClose, 
-  PanelRightOpen,
-  GitBranch as GitBranchIcon,
+import { FitAddon } from "@xterm/addon-fit";
+import { WebLinksAddon } from "@xterm/addon-web-links";
+import { useEffect, useRef, useState } from "react";
+import { Terminal } from "xterm";
+import "xterm/css/xterm.css";
+import {
+  ArrowLeft,
   Clock,
-  User,
-  Terminal as TerminalIcon,
   Copy,
   ExternalLink,
-  Trash2,
+  GitBranch as GitBranchIcon,
   GitFork,
-  GitMerge
-} from 'lucide-react';
+  GitMerge,
+  PanelRightClose,
+  PanelRightOpen,
+  Terminal as TerminalIcon,
+  Trash2,
+  User,
+} from "lucide-react";
+import { Badge } from "../ui/badge";
+import { Button } from "../ui/button";
+import { Card, CardContent, CardHeader } from "../ui/card";
+import { Separator } from "../ui/separator";
 
 interface TerminalViewProps {
   instanceId: string;
@@ -39,12 +39,16 @@ export function TerminalView({ instanceId, sessionName, onBack }: TerminalViewPr
   // Mock instance data based on instanceId
   const mockInstance = {
     id: instanceId,
-    type: instanceId.startsWith('work') ? 'work' : instanceId.startsWith('review') ? 'review' : 'adhoc',
-    status: 'running',
-    branch_name: 'feat/auth-fix',
+    type: instanceId.startsWith("work")
+      ? "work"
+      : instanceId.startsWith("review")
+        ? "review"
+        : "adhoc",
+    status: "running",
+    branch_name: "feat/auth-fix",
     issue_number: 123,
-    issue_title: 'Fix authentication system',
-    created_at: '2024-01-15T08:30:00Z',
+    issue_title: "Fix authentication system",
+    created_at: "2024-01-15T08:30:00Z",
     agent_number: 1,
     worktree_path: `/Users/user/worktrees/${instanceId}`,
   };
@@ -56,126 +60,132 @@ export function TerminalView({ instanceId, sessionName, onBack }: TerminalViewPr
     // Create terminal instance with that nice green-on-black theme
     const terminal = new Terminal({
       theme: {
-        background: '#000000',
-        foreground: '#00ff00',
-        cursor: '#00ff00',
-        cursorAccent: '#000000',
-        selectionBackground: 'rgba(0, 255, 0, 0.3)',
-        black: '#000000',
-        red: '#ff0000',
-        green: '#00ff00',
-        yellow: '#ffff00',
-        blue: '#0000ff',
-        magenta: '#ff00ff',
-        cyan: '#00ffff',
-        white: '#ffffff',
-        brightBlack: '#808080',
-        brightRed: '#ff8080',
-        brightGreen: '#80ff80',
-        brightYellow: '#ffff80',
-        brightBlue: '#8080ff',
-        brightMagenta: '#ff80ff',
-        brightCyan: '#80ffff',
-        brightWhite: '#ffffff'
+        background: "#000000",
+        foreground: "#00ff00",
+        cursor: "#00ff00",
+        cursorAccent: "#000000",
+        selectionBackground: "rgba(0, 255, 0, 0.3)",
+        black: "#000000",
+        red: "#ff0000",
+        green: "#00ff00",
+        yellow: "#ffff00",
+        blue: "#0000ff",
+        magenta: "#ff00ff",
+        cyan: "#00ffff",
+        white: "#ffffff",
+        brightBlack: "#808080",
+        brightRed: "#ff8080",
+        brightGreen: "#80ff80",
+        brightYellow: "#ffff80",
+        brightBlue: "#8080ff",
+        brightMagenta: "#ff80ff",
+        brightCyan: "#80ffff",
+        brightWhite: "#ffffff",
       },
       fontSize: 14,
       fontFamily: 'Menlo, Monaco, "Courier New", monospace',
       cursorBlink: true,
-      allowTransparency: false
+      allowTransparency: false,
     });
 
     // Add addons
     const fitAddon = new FitAddon();
     const webLinksAddon = new WebLinksAddon();
-    
+
     terminal.loadAddon(fitAddon);
     terminal.loadAddon(webLinksAddon);
-    
+
     // Open terminal in the DOM
     terminal.open(terminalRef.current);
-    
+
     // Store refs
     xtermRef.current = terminal;
     fitAddonRef.current = fitAddon;
-    
+
     // Fit terminal to container
     fitAddon.fit();
-    
+
     // Connect to WebSocket
-    const ws = new WebSocket('ws://localhost:3002/api/terminal');
+    const ws = new WebSocket("ws://localhost:3002/api/terminal");
     wsRef.current = ws;
 
     ws.onopen = () => {
-      console.log('WebSocket connected to PTY');
+      console.log("WebSocket connected to PTY");
       setIsConnected(true);
-      
+
       // Send connect message to start PTY session
-      ws.send(JSON.stringify({
-        type: 'connect',
-        session: 'testing',
-        cols: terminal.cols,
-        rows: terminal.rows
-      }));
+      ws.send(
+        JSON.stringify({
+          type: "connect",
+          session: "testing",
+          cols: terminal.cols,
+          rows: terminal.rows,
+        }),
+      );
     };
 
     ws.onmessage = (event) => {
       const msg = JSON.parse(event.data);
-      
+
       switch (msg.type) {
-        case 'data':
+        case "data":
           // Write PTY data to terminal
           terminal.write(msg.data);
           break;
-          
-        case 'connected':
-          console.log('Connected to tmux session:', msg.message);
+
+        case "connected":
+          console.log("Connected to tmux session:", msg.message);
           break;
-          
-        case 'error':
-          console.error('PTY error:', msg.message);
-          terminal.write('\r\n❌ ' + msg.message + '\r\n');
+
+        case "error":
+          console.error("PTY error:", msg.message);
+          terminal.write("\r\n❌ " + msg.message + "\r\n");
           break;
-          
-        case 'exit':
-          console.log('PTY session ended:', msg.message);
-          terminal.write('\r\n💀 ' + msg.message + '\r\n');
+
+        case "exit":
+          console.log("PTY session ended:", msg.message);
+          terminal.write("\r\n💀 " + msg.message + "\r\n");
           setIsConnected(false);
           break;
-          
+
         default:
-          console.log('Unknown message type:', msg.type);
+          console.log("Unknown message type:", msg.type);
       }
     };
 
     ws.onclose = () => {
-      console.log('WebSocket disconnected');
+      console.log("WebSocket disconnected");
       setIsConnected(false);
-      terminal.write('\r\n❌ Disconnected from tmux session\r\n');
+      terminal.write("\r\n❌ Disconnected from tmux session\r\n");
     };
 
     ws.onerror = (error) => {
-      console.error('WebSocket error:', error);
-      terminal.write('\r\n⚠️ WebSocket connection error\r\n');
+      console.error("WebSocket error:", error);
+      terminal.write("\r\n⚠️ WebSocket connection error\r\n");
     };
 
     // Handle terminal input - send to PTY
     terminal.onData((data) => {
       if (ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({
-          type: 'input',
-          data: data
-        }));
+        ws.send(
+          JSON.stringify({
+            type: "input",
+            data: data,
+          }),
+        );
       }
     });
 
     // Handle terminal resize
     terminal.onResize(({ cols, rows }) => {
       if (ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({
-          type: 'resize',
-          cols,
-          rows
-        }));
+        ws.send(
+          JSON.stringify({
+            type: "resize",
+            cols,
+            rows,
+          }),
+        );
       }
     });
 
@@ -185,12 +195,12 @@ export function TerminalView({ instanceId, sessionName, onBack }: TerminalViewPr
         fitAddon.fit();
       }
     };
-    
-    window.addEventListener('resize', handleResize);
+
+    window.addEventListener("resize", handleResize);
 
     // Cleanup on unmount
     return () => {
-      window.removeEventListener('resize', handleResize);
+      window.removeEventListener("resize", handleResize);
       if (ws.readyState === WebSocket.OPEN) {
         ws.close();
       }
@@ -203,23 +213,23 @@ export function TerminalView({ instanceId, sessionName, onBack }: TerminalViewPr
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-    
+
     if (diffHours > 0) {
       return `${diffHours}h ago`;
     }
-    return '30m ago';
+    return "30m ago";
   };
 
   const getTypeIcon = () => {
     switch (mockInstance.type) {
-      case 'work':
-        return '🔨';
-      case 'review':
-        return '🔬';
-      case 'adhoc':
-        return '⚡';
+      case "work":
+        return "🔨";
+      case "review":
+        return "🔬";
+      case "adhoc":
+        return "⚡";
       default:
-        return '📝';
+        return "📝";
     }
   };
 
@@ -239,11 +249,7 @@ export function TerminalView({ instanceId, sessionName, onBack }: TerminalViewPr
             <Badge variant="default">Running</Badge>
           </div>
         </div>
-        <Button 
-          variant="ghost" 
-          size="sm"
-          onClick={() => setSidebarOpen(!sidebarOpen)}
-        >
+        <Button variant="ghost" size="sm" onClick={() => setSidebarOpen(!sidebarOpen)}>
           {sidebarOpen ? (
             <PanelRightClose className="h-4 w-4" />
           ) : (
@@ -257,18 +263,14 @@ export function TerminalView({ instanceId, sessionName, onBack }: TerminalViewPr
         {/* Terminal */}
         <div className="flex-1 flex flex-col">
           {/* Real xterm.js terminal container */}
-          <div 
-            ref={terminalRef}
-            className="flex-1 bg-black"
-            style={{ padding: 0 }}
-          />
-          
+          <div ref={terminalRef} className="flex-1 bg-black" style={{ padding: 0 }} />
+
           {/* Connection Status Bar */}
           <div className="border-t bg-card p-2">
             <div className="flex items-center justify-between">
               <span className="text-xs text-muted-foreground">
-                {isConnected ? '🟢' : '🔴'} Session: {sessionName} | 
-                {isConnected ? ' Connected to tmux via PTY' : ' Disconnected'}
+                {isConnected ? "🟢" : "🔴"} Session: {sessionName} |
+                {isConnected ? " Connected to tmux via PTY" : " Disconnected"}
               </span>
               <span className="text-xs text-muted-foreground">
                 Click anywhere in terminal to interact
@@ -317,7 +319,9 @@ export function TerminalView({ instanceId, sessionName, onBack }: TerminalViewPr
                   <div className="flex items-center gap-2">
                     <GitBranchIcon className="h-3 w-3 text-muted-foreground" />
                     <span className="text-muted-foreground">Branch:</span>
-                    <code className="bg-muted px-1 rounded text-xs">{mockInstance.branch_name}</code>
+                    <code className="bg-muted px-1 rounded text-xs">
+                      {mockInstance.branch_name}
+                    </code>
                   </div>
                   <div className="flex items-center gap-2">
                     <Clock className="h-3 w-3 text-muted-foreground" />
@@ -349,8 +353,12 @@ export function TerminalView({ instanceId, sessionName, onBack }: TerminalViewPr
                     </CardHeader>
                     <CardContent className="pt-0">
                       <div className="flex gap-1">
-                        <Badge variant="destructive" className="text-xs">bug</Badge>
-                        <Badge variant="default" className="text-xs">priority-high</Badge>
+                        <Badge variant="destructive" className="text-xs">
+                          bug
+                        </Badge>
+                        <Badge variant="default" className="text-xs">
+                          priority-high
+                        </Badge>
                       </div>
                     </CardContent>
                   </Card>
@@ -359,24 +367,32 @@ export function TerminalView({ instanceId, sessionName, onBack }: TerminalViewPr
 
               <div>
                 <h4 className="font-medium mb-2">Connection Status</h4>
-                <div className={`p-3 rounded-md ${
-                  isConnected 
-                    ? 'bg-green-50 dark:bg-green-900/20' 
-                    : 'bg-red-50 dark:bg-red-900/20'
-                }`}>
-                  <p className={`text-sm ${
-                    isConnected 
-                      ? 'text-green-700 dark:text-green-300' 
-                      : 'text-red-700 dark:text-red-300'
-                  }`}>
-                    {isConnected ? '🟢 Connected to tmux session' : '🔴 Disconnected from tmux session'}
+                <div
+                  className={`p-3 rounded-md ${
+                    isConnected
+                      ? "bg-green-50 dark:bg-green-900/20"
+                      : "bg-red-50 dark:bg-red-900/20"
+                  }`}
+                >
+                  <p
+                    className={`text-sm ${
+                      isConnected
+                        ? "text-green-700 dark:text-green-300"
+                        : "text-red-700 dark:text-red-300"
+                    }`}
+                  >
+                    {isConnected
+                      ? "🟢 Connected to tmux session"
+                      : "🔴 Disconnected from tmux session"}
                   </p>
-                  <p className={`text-xs mt-1 ${
-                    isConnected 
-                      ? 'text-green-600 dark:text-green-400' 
-                      : 'text-red-600 dark:text-red-400'
-                  }`}>
-                    Session: testing | WebSocket: {isConnected ? 'Active' : 'Inactive'}
+                  <p
+                    className={`text-xs mt-1 ${
+                      isConnected
+                        ? "text-green-600 dark:text-green-400"
+                        : "text-red-600 dark:text-red-400"
+                    }`}
+                  >
+                    Session: testing | WebSocket: {isConnected ? "Active" : "Inactive"}
                   </p>
                 </div>
               </div>

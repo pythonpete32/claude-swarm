@@ -11,7 +11,11 @@
   "scripts": {
     "dev": "bun --watch src/cli.ts",
     "build": "tsc && chmod +x dist/cli.js",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "lint": "bunx biome check .",
+    "lint:fix": "bunx biome check --write .",
+    "test": "echo 'No tests configured for CLI package'",
+    "test:run": "echo 'No tests configured for CLI package'"
   },
   "dependencies": {
     "@claude-codex/core": "workspace:*"
