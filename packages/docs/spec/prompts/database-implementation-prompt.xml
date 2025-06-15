@@ -52,11 +52,19 @@
       </integration_tests>
       
       <database_testing_strategy>
-        <in_memory_unit>Use `file:memory:` for fast unit tests</in_memory_unit>
+        <in_memory_unit>Use `:memory:` for lightning-fast unit tests</in_memory_unit>
         <temp_file_integration>Use temporary files for integration tests</temp_file_integration>
+        <turso_forking>Optional: Use Turso database branching for cloud-based testing</turso_forking>
         <cleanup>Automatic database cleanup after each test</cleanup>
         <concurrency>Test concurrent access patterns</concurrency>
       </database_testing_strategy>
+      
+      <advanced_testing_features>
+        <database_dumps>Create test data from production dumps using `turso db shell .dump`</database_dumps>
+        <database_branching>Use `turso db create test-db --from-db main-db` for fork-based testing</database_branching>
+        <point_in_time>Test with specific data states using `--timestamp` flag</point_in_time>
+        <real_world_data>Test against actual production schema and data patterns</real_world_data>
+      </advanced_testing_features>
     </testing_requirements>
   </requirements>
 
@@ -172,6 +180,30 @@
           ```
         </in_memory_setup>
         
+        <turso_fork_testing>
+          ```typescript
+          // Optional: Advanced testing with Turso database forking
+          async function createForkTestDatabase(): Promise<DatabaseInterface> {
+            // Create a test database branch from production data
+            const testDbName = `test-${Date.now()}`;
+            
+            // Fork from main database with real data
+            await exec(`turso db create ${testDbName} --from-db main-database`);
+            
+            const url = await exec(`turso db show --url ${testDbName}`);
+            const token = await exec(`turso db tokens create ${testDbName}`);
+            
+            const client = createClient({ url, authToken: token });
+            const db = drizzle(client, { schema });
+            
+            return {
+              db,
+              cleanup: () => exec(`turso db delete ${testDbName}`)
+            };
+          }
+          ```
+        </turso_fork_testing>
+        
         <test_examples>
           ```typescript
           describe('Instance Management', () => {
@@ -215,6 +247,7 @@
         <subtask>Test complex queries with joins and relations</subtask>
         <subtask>Test transaction behavior and rollbacks</subtask>
         <subtask>Test database cleanup and maintenance operations</subtask>
+        <subtask>Implement Turso database forking for advanced testing</subtask>
       </details>
       <integration_strategy>
         ```typescript
@@ -250,6 +283,48 @@
         });
         ```
       </integration_strategy>
+      
+      <turso_integration_testing>
+        ```typescript
+        // Advanced integration testing with Turso forking
+        describe('Turso Fork Integration Tests', () => {
+          let forkDb: string;
+          let testDb: DatabaseInterface;
+          
+          beforeEach(async () => {
+            // Create database fork from production data
+            forkDb = `integration-test-${Date.now()}`;
+            await exec(`turso db create ${forkDb} --from-db production-db`);
+            
+            const dbUrl = await exec(`turso db show --url ${forkDb}`);
+            const authToken = await exec(`turso db tokens create ${forkDb}`);
+            
+            testDb = await initializeDatabase({
+              cloud: {
+                enabled: true,
+                syncUrl: dbUrl.trim(),
+                authToken: authToken.trim()
+              }
+            });
+          });
+          
+          afterEach(async () => {
+            await testDb.disconnect();
+            await exec(`turso db delete ${forkDb}`);
+          });
+          
+          it('should handle production-scale data operations', async () => {
+            // Test with real production data patterns
+            const instances = await testDb.select()
+              .from(instancesTable)
+              .limit(1000);
+            
+            expect(instances).toBeDefined();
+            // Test operations against realistic data volumes
+          });
+        });
+        ```
+      </turso_integration_testing>
     </task>
 
     <task id="7" priority="medium">
