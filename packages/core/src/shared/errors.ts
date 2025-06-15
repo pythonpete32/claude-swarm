@@ -77,6 +77,25 @@ export const ERROR_CODES = {
   FILE_CLEANUP_FAILED: "FILE_CLEANUP_FAILED",
   FILE_PARSE_FAILED: "FILE_PARSE_FAILED",
   FILE_CONTEXT_INCOMPLETE: "FILE_CONTEXT_INCOMPLETE",
+
+  // Database errors
+  DATABASE_INITIALIZATION_FAILED: "DATABASE_INITIALIZATION_FAILED",
+  DATABASE_SCHEMA_MIGRATION_FAILED: "DATABASE_SCHEMA_MIGRATION_FAILED",
+  DATABASE_CONNECTION_FAILED: "DATABASE_CONNECTION_FAILED",
+  DATABASE_FILE_PERMISSION_DENIED: "DATABASE_FILE_PERMISSION_DENIED",
+  DATABASE_INSTANCE_EXISTS: "DATABASE_INSTANCE_EXISTS",
+  DATABASE_INSTANCE_NOT_FOUND: "DATABASE_INSTANCE_NOT_FOUND",
+  DATABASE_VALIDATION_FAILED: "DATABASE_VALIDATION_FAILED",
+  DATABASE_INSERT_FAILED: "DATABASE_INSERT_FAILED",
+  DATABASE_UPDATE_FAILED: "DATABASE_UPDATE_FAILED",
+  DATABASE_DELETE_FAILED: "DATABASE_DELETE_FAILED",
+  DATABASE_QUERY_FAILED: "DATABASE_QUERY_FAILED",
+  DATABASE_INVALID_STATUS_TRANSITION: "DATABASE_INVALID_STATUS_TRANSITION",
+  DATABASE_LOG_FAILED: "DATABASE_LOG_FAILED",
+  DATABASE_PARENT_INSTANCE_NOT_FOUND: "DATABASE_PARENT_INSTANCE_NOT_FOUND",
+  DATABASE_CHILD_INSTANCE_NOT_FOUND: "DATABASE_CHILD_INSTANCE_NOT_FOUND",
+  DATABASE_RELATIONSHIP_EXISTS: "DATABASE_RELATIONSHIP_EXISTS",
+  DATABASE_OPERATION_FAILED: "DATABASE_OPERATION_FAILED",
 } as const;
 
 export type ErrorCode = keyof typeof ERROR_CODES;
@@ -343,6 +362,39 @@ export class FileError extends SwarmError {
 }
 
 /**
+ * Database operation errors
+ */
+export class DatabaseError extends SwarmError {
+  constructor(message: string, code: string, details: Record<string, unknown> = {}) {
+    super(message, code, "database", details);
+    this.name = "DatabaseError";
+  }
+
+  protected getSuggestion(): string | null {
+    switch (this.code) {
+      case ERROR_CODES.DATABASE_INITIALIZATION_FAILED:
+        return "Check database file permissions and ensure libSQL is properly installed";
+      case ERROR_CODES.DATABASE_SCHEMA_MIGRATION_FAILED:
+        return "Verify migration files are present and database is not corrupted";
+      case ERROR_CODES.DATABASE_CONNECTION_FAILED:
+        return "Check database URL format and network connectivity";
+      case ERROR_CODES.DATABASE_FILE_PERMISSION_DENIED:
+        return "Ensure the application has read/write access to the database file";
+      case ERROR_CODES.DATABASE_INSTANCE_EXISTS:
+        return "Use a different instance ID or update the existing instance";
+      case ERROR_CODES.DATABASE_INSTANCE_NOT_FOUND:
+        return "Verify the instance ID exists in the database";
+      case ERROR_CODES.DATABASE_VALIDATION_FAILED:
+        return "Check input data format and required fields";
+      case ERROR_CODES.DATABASE_INVALID_STATUS_TRANSITION:
+        return "Verify the status transition is valid for the current instance state";
+      default:
+        return null;
+    }
+  }
+}
+
+/**
  * Error creation utilities
  */
 export const ErrorFactory = {
@@ -393,6 +445,13 @@ export const ErrorFactory = {
    */
   file(code: string, message: string, details?: Record<string, unknown>): FileError {
     return new FileError(message, code, details);
+  },
+
+  /**
+   * Create a DatabaseError with standardized formatting
+   */
+  database(code: string, message: string, details?: Record<string, unknown>): DatabaseError {
+    return new DatabaseError(message, code, details);
   },
 };
 
