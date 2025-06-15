@@ -57,8 +57,9 @@ export function CreateInstanceForm({ onInstanceCreated }: CreateInstanceFormProp
       <CardContent className="space-y-4">
         {/* Prompt Input */}
         <div className="space-y-2">
-          <label className="text-sm font-medium">What do you want to work on?</label>
+          <label htmlFor="prompt-input" className="text-sm font-medium">What do you want to work on?</label>
           <Textarea
+            id="prompt-input"
             placeholder="Implement authentication for the login page..."
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
