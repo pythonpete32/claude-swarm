@@ -1,7 +1,7 @@
 /planning/temp/*
 /worktrees/*
 node_modules/*
-dist/*
+**/dist/
 coverage/*
 docs/*
 .DS_Store
