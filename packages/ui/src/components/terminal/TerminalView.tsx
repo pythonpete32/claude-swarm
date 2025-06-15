@@ -1,4 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { Terminal } from 'xterm';
+import { FitAddon } from '@xterm/addon-fit';
+import { WebLinksAddon } from '@xterm/addon-web-links';
+import 'xterm/css/xterm.css';
 import { Button } from '../ui/button';
 import { Card, CardContent, CardHeader } from '../ui/card';
 import { Badge } from '../ui/badge';
@@ -10,7 +14,7 @@ import {
   GitBranch as GitBranchIcon,
   Clock,
   User,
-  Terminal,
+  Terminal as TerminalIcon,
   Copy,
   ExternalLink,
   Trash2,
@@ -26,6 +30,11 @@ interface TerminalViewProps {
 
 export function TerminalView({ instanceId, sessionName, onBack }: TerminalViewProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isConnected, setIsConnected] = useState(false);
+  const wsRef = useRef<WebSocket | null>(null);
+  const terminalRef = useRef<HTMLDivElement>(null);
+  const xtermRef = useRef<Terminal | null>(null);
+  const fitAddonRef = useRef<FitAddon | null>(null);
 
   // Mock instance data based on instanceId
   const mockInstance = {
@@ -40,64 +49,154 @@ export function TerminalView({ instanceId, sessionName, onBack }: TerminalViewPr
     worktree_path: `/Users/user/worktrees/${instanceId}`,
   };
 
-  // Mock terminal output
-  const mockTerminalLines = [
-    'claude@work-123-a1:~/worktrees/work-123-a1$ ls',
-    'README.md  package.json  src/  tests/',
-    'claude@work-123-a1:~/worktrees/work-123-a1$ cd src/',
-    'claude@work-123-a1:~/worktrees/work-123-a1/src$ cat auth.ts',
-    '// Authentication service implementation',
-    'export class AuthService {',
-    '  private token: string | null = null;',
-    '',
-    '  async login(username: string, password: string): Promise<boolean> {',
-    '    // TODO: Implement proper authentication',
-    '    const response = await fetch("/api/login", {',
-    '      method: "POST",',
-    '      headers: { "Content-Type": "application/json" },',
-    '      body: JSON.stringify({ username, password })',
-    '    });',
-    '',
-    '    if (response.ok) {',
-    '      const data = await response.json();',
-    '      this.token = data.token;',
-    '      return true;',
-    '    }',
-    '    return false;',
-    '  }',
-    '}',
-    '',
-    'claude@work-123-a1:~/worktrees/work-123-a1/src$ npm test',
-    '> Running test suite...',
-    '',
-    'PASS  src/auth.test.ts',
-    '  ✓ should authenticate valid user (45ms)',
-    '  ✓ should reject invalid credentials (12ms)',
-    '  ✓ should handle network errors (8ms)',
-    '',
-    'Test Suites: 1 passed, 1 total',
-    'Tests:       3 passed, 3 total',
-    'Snapshots:   0 total',
-    'Time:        2.451s',
-    '',
-    '✅ All tests passing! The authentication implementation looks good.',
-    '',
-    'I\'ve implemented the basic authentication service with proper error handling',
-    'and comprehensive test coverage. The login flow now supports:',
-    '',
-    '1. Secure credential validation',
-    '2. JWT token management', 
-    '3. Network error handling',
-    '4. Comprehensive test suite',
-    '',
-    'What would you like me to work on next? I could:',
-    '- Add password reset functionality',
-    '- Implement role-based permissions',
-    '- Add two-factor authentication',
-    '- Set up session management',
-    '',
-    'claude@work-123-a1:~/worktrees/work-123-a1/src$ █'
-  ];
+  // Initialize xterm.js terminal and WebSocket connection
+  useEffect(() => {
+    if (!terminalRef.current) return;
+
+    // Create terminal instance with that nice green-on-black theme
+    const terminal = new Terminal({
+      theme: {
+        background: '#000000',
+        foreground: '#00ff00',
+        cursor: '#00ff00',
+        cursorAccent: '#000000',
+        selection: 'rgba(0, 255, 0, 0.3)',
+        black: '#000000',
+        red: '#ff0000',
+        green: '#00ff00',
+        yellow: '#ffff00',
+        blue: '#0000ff',
+        magenta: '#ff00ff',
+        cyan: '#00ffff',
+        white: '#ffffff',
+        brightBlack: '#808080',
+        brightRed: '#ff8080',
+        brightGreen: '#80ff80',
+        brightYellow: '#ffff80',
+        brightBlue: '#8080ff',
+        brightMagenta: '#ff80ff',
+        brightCyan: '#80ffff',
+        brightWhite: '#ffffff'
+      },
+      fontSize: 14,
+      fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+      cursorBlink: true,
+      allowTransparency: false
+    });
+
+    // Add addons
+    const fitAddon = new FitAddon();
+    const webLinksAddon = new WebLinksAddon();
+    
+    terminal.loadAddon(fitAddon);
+    terminal.loadAddon(webLinksAddon);
+    
+    // Open terminal in the DOM
+    terminal.open(terminalRef.current);
+    
+    // Store refs
+    xtermRef.current = terminal;
+    fitAddonRef.current = fitAddon;
+    
+    // Fit terminal to container
+    fitAddon.fit();
+    
+    // Connect to WebSocket
+    const ws = new WebSocket('ws://localhost:3002/api/terminal');
+    wsRef.current = ws;
+
+    ws.onopen = () => {
+      console.log('WebSocket connected to PTY');
+      setIsConnected(true);
+      
+      // Send connect message to start PTY session
+      ws.send(JSON.stringify({
+        type: 'connect',
+        session: 'testing',
+        cols: terminal.cols,
+        rows: terminal.rows
+      }));
+    };
+
+    ws.onmessage = (event) => {
+      const msg = JSON.parse(event.data);
+      
+      switch (msg.type) {
+        case 'data':
+          // Write PTY data to terminal
+          terminal.write(msg.data);
+          break;
+          
+        case 'connected':
+          console.log('Connected to tmux session:', msg.message);
+          break;
+          
+        case 'error':
+          console.error('PTY error:', msg.message);
+          terminal.write('\r\n❌ ' + msg.message + '\r\n');
+          break;
+          
+        case 'exit':
+          console.log('PTY session ended:', msg.message);
+          terminal.write('\r\n💀 ' + msg.message + '\r\n');
+          setIsConnected(false);
+          break;
+          
+        default:
+          console.log('Unknown message type:', msg.type);
+      }
+    };
+
+    ws.onclose = () => {
+      console.log('WebSocket disconnected');
+      setIsConnected(false);
+      terminal.write('\r\n❌ Disconnected from tmux session\r\n');
+    };
+
+    ws.onerror = (error) => {
+      console.error('WebSocket error:', error);
+      terminal.write('\r\n⚠️ WebSocket connection error\r\n');
+    };
+
+    // Handle terminal input - send to PTY
+    terminal.onData((data) => {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({
+          type: 'input',
+          data: data
+        }));
+      }
+    });
+
+    // Handle terminal resize
+    terminal.onResize(({ cols, rows }) => {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({
+          type: 'resize',
+          cols,
+          rows
+        }));
+      }
+    });
+
+    // Handle window resize
+    const handleResize = () => {
+      if (fitAddon) {
+        fitAddon.fit();
+      }
+    };
+    
+    window.addEventListener('resize', handleResize);
+
+    // Cleanup on unmount
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.close();
+      }
+      terminal.dispose();
+    };
+  }, [sessionName]);
 
   const formatTimeAgo = (dateString: string) => {
     const date = new Date(dateString);
@@ -157,33 +256,23 @@ export function TerminalView({ instanceId, sessionName, onBack }: TerminalViewPr
       <div className="flex-1 flex overflow-hidden">
         {/* Terminal */}
         <div className="flex-1 flex flex-col">
-          <div className="flex-1 bg-black text-green-400 font-mono text-sm p-4 overflow-auto">
-            {mockTerminalLines.map((line, index) => (
-              <div key={index} className="min-h-[1.2em]">
-                {line.includes('claude@') ? (
-                  <span className="text-blue-400">{line}</span>
-                ) : line.includes('✓') ? (
-                  <span className="text-green-300">{line}</span>
-                ) : line.includes('✅') ? (
-                  <span className="text-green-300">{line}</span>
-                ) : line.includes('PASS') ? (
-                  <span className="text-green-300">{line}</span>
-                ) : line.includes('█') ? (
-                  <span>
-                    {line.replace('█', '')}
-                    <span className="animate-pulse bg-green-400 text-green-400">█</span>
-                  </span>
-                ) : (
-                  line
-                )}
-              </div>
-            ))}
-          </div>
+          {/* Real xterm.js terminal container */}
+          <div 
+            ref={terminalRef}
+            className="flex-1 bg-black"
+            style={{ padding: 0 }}
+          />
           
-          {/* Terminal Input Area */}
+          {/* Connection Status Bar */}
           <div className="border-t bg-card p-2">
-            <div className="text-xs text-muted-foreground text-center">
-              Terminal session: {sessionName} | Click in terminal area to interact with Claude
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">
+                {isConnected ? '🟢' : '🔴'} Session: {sessionName} | 
+                {isConnected ? ' Connected to tmux via PTY' : ' Disconnected'}
+              </span>
+              <span className="text-xs text-muted-foreground">
+                Click anywhere in terminal to interact
+              </span>
             </div>
           </div>
         </div>
@@ -241,7 +330,7 @@ export function TerminalView({ instanceId, sessionName, onBack }: TerminalViewPr
                     <span>Agent {mockInstance.agent_number}</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Terminal className="h-3 w-3 text-muted-foreground" />
+                    <TerminalIcon className="h-3 w-3 text-muted-foreground" />
                     <span className="text-muted-foreground">Session:</span>
                     <code className="bg-muted px-1 rounded text-xs">{sessionName}</code>
                   </div>
@@ -269,13 +358,25 @@ export function TerminalView({ instanceId, sessionName, onBack }: TerminalViewPr
               )}
 
               <div>
-                <h4 className="font-medium mb-2">Status</h4>
-                <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-md">
-                  <p className="text-sm text-green-700 dark:text-green-300">
-                    ✅ Claude is active and responding
+                <h4 className="font-medium mb-2">Connection Status</h4>
+                <div className={`p-3 rounded-md ${
+                  isConnected 
+                    ? 'bg-green-50 dark:bg-green-900/20' 
+                    : 'bg-red-50 dark:bg-red-900/20'
+                }`}>
+                  <p className={`text-sm ${
+                    isConnected 
+                      ? 'text-green-700 dark:text-green-300' 
+                      : 'text-red-700 dark:text-red-300'
+                  }`}>
+                    {isConnected ? '🟢 Connected to tmux session' : '🔴 Disconnected from tmux session'}
                   </p>
-                  <p className="text-xs text-green-600 dark:text-green-400 mt-1">
-                    Last response: just now
+                  <p className={`text-xs mt-1 ${
+                    isConnected 
+                      ? 'text-green-600 dark:text-green-400' 
+                      : 'text-red-600 dark:text-red-400'
+                  }`}>
+                    Session: testing | WebSocket: {isConnected ? 'Active' : 'Inactive'}
                   </p>
                 </div>
               </div>
