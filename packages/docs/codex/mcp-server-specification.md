@@ -24,32 +24,41 @@ The MCP server acts as the coordination layer between Claude agents and the Clau
 ## Architecture Principles
 
 ### Core Package Integration
-The MCP server **MUST** reuse existing functions from `@claude-swarm/core`:
+The MCP server **MUST** reuse existing functions from `@claude-codex/core`:
 - Use `createWorktree()` for all worktree operations
 - Use `createTmuxSession()` and `launchClaudeInteractive()` for session management
 - Use `createPullRequest()` from core GitHub integration
 - Use `generateReviewPrompt()` and `generateWorkPrompt()` for prompt generation
+- Use database functions: `createInstance()`, `updateInstanceStatus()`, `logMCPEvent()`
 - Use existing validation and error handling patterns
 
+### Workflows Package Integration
+The MCP server **SHOULD** coordinate with workflows package:
+- Workflows orchestrate agent lifecycle using core functions
+- MCP tools trigger database state changes via core database module
+- Both packages use same core functions, ensuring consistency
+
 ### Responsibility Boundaries
-- **MCP Server**: Tool interface, validation, database updates, agent coordination
-- **Core Package**: All actual operations (Git, tmux, GitHub, file system)
-- **Database**: State persistence and instance relationship tracking
+- **MCP Server**: Tool interface, validation, agent coordination
+- **Workflows Package**: Agent lifecycle orchestration using core functions
+- **Core Package**: All actual operations (Git, tmux, GitHub, file system, database)
+- **Database Module (in Core)**: State persistence and instance relationship tracking
 
 ### Connection Model
 ```
-┌─ Claude Agent ─────────┐    ┌─ MCP Server ─────────┐    ┌─ Core Package ──┐
-│ Instance: work-123-a1  │───▶│ Tool: spawn_review   │───▶│ createWorktree() │
-│ Calls MCP tools       │    │ Validates & executes │    │ createTmuxSession│
-│ Gets structured data   │◀───│ Returns results      │◀───│ launchClaude()   │
-└────────────────────────┘    └──────────────────────┘    └──────────────────┘
-                                        │
-                                        ▼
-                               ┌─ SQLite Database ──┐
-                               │ Update instance    │
-                               │ Log MCP events     │
-                               │ Track relationships│
-                               └────────────────────┘
+┌─ Claude Agent ─────────┐    ┌─ MCP Server ─────────┐    ┌─ Core Package ──────┐
+│ Instance: work-123-a1  │───▶│ Tool: spawn_review   │───▶│ createWorktree()     │
+│ Calls MCP tools       │    │ Validates & executes │    │ createTmuxSession()  │
+│ Gets structured data   │◀───│ Returns results      │◀───│ createInstance()     │
+└────────────────────────┘    └──────────────────────┘    │ logMCPEvent()        │
+                                        │                  └──────────────────────┘
+                                        ▼                           │
+                               ┌─ Workflows Package ─┐             ▼
+                               │ Orchestrates core    │    ┌─ SQLite Database ──┐
+                               │ functions for agent  │    │ (via core module)   │
+                               │ lifecycle management │    │ Instance tracking   │
+                               └──────────────────────┘    │ MCP event logging   │
+                                                           └─────────────────────┘
 ```
 
 ## Tool Specifications
@@ -79,12 +88,13 @@ The MCP server **MUST** reuse existing functions from `@claude-swarm/core`:
 - Use `createWorktree()` to fork review environment from Coding Agent's branch
 - Use `createTmuxSession()` and `launchClaudeInteractive()` to start Review Agent
 - Use `generateReviewPrompt()` for default review prompt generation
+- Use `createInstance()` and `updateInstanceStatus()` for database operations
 
-**Database Operations**:
-- Create new instance record with type='review'
-- Create relationship record linking Coding Agent → Review Agent
-- Update Coding Agent status to `WAITING_REVIEW`
-- Log MCP event for complete audit trail
+**Database Operations (via Core Module)**:
+- Create new instance record with type='review' using `createInstance()`
+- Create relationship record using `createRelationship()`
+- Update Coding Agent status to `WAITING_REVIEW` using `updateInstanceStatus()`
+- Log MCP event using `logMCPEvent()` for complete audit trail
 
 **Agent Spawning Process with Loop Protection**:
 1. **Validate Agent Type**: Ensure calling agent is a Coding Agent
@@ -130,10 +140,11 @@ WHERE parent_instance = :coding_agent_id
 - Use `detectRepository()` to get repository information
 - Use `getDiff()` to validate changes exist
 - Use `createPullRequest()` from core GitHub integration
+- Use `updateInstance()` for database operations
 
-**Database Operations**:
-- Update instance record with PR number
-- Log MCP event for audit trail
+**Database Operations (via Core Module)**:
+- Update instance record with PR number using `updateInstance()`
+- Log MCP event using `logMCPEvent()` for audit trail
 
 **Return Data**:
 - `pr_number`: GitHub PR number
@@ -165,13 +176,14 @@ WHERE parent_instance = :coding_agent_id
 **Core Package Integration**:
 - Use existing file operations to create structured feedback documents
 - Use git operations to merge feedback into target worktree
-- Use database queries to resolve instance relationships
+- Use `getInstanceRelationships()` to resolve instance relationships
+- Use core database functions for all state updates
 
-**Database Operations**:
-- Store feedback record with full content for UI display
-- Log MCP event with git commit hash for audit trail
-- Update Review Agent status to `TERMINATED`
-- Maintain instance relationship tracking
+**Database Operations (via Core Module)**:
+- Store feedback record using `createFeedbackRecord()`
+- Log MCP event with git commit hash using `logMCPEvent()`
+- Update Review Agent status to `TERMINATED` using `updateInstanceStatus()`
+- Maintain instance relationship tracking using core database functions
 
 **Return Data**:
 - `feedback_id`: Unique feedback identifier

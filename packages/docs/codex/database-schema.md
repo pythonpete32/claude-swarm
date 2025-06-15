@@ -2,6 +2,13 @@
 
 This document defines the SQLite database schema for Claude Codex, supporting the three-agent system with instance management, relationship tracking, parallel agent coordination, and GitHub integration.
 
+## Implementation Location
+
+**Package**: `@claude-codex/core`  
+**Module**: `src/core/database.ts`  
+**Pattern**: Follows core's dependency injection and error handling patterns  
+**Usage**: Exported functions consumed by workflows, MCP server, and UI server
+
 ## Design Principles
 
 The schema is designed around the **Five Critical State Transitions** that we can reliably observe through status-updating MCP tools:
@@ -298,6 +305,47 @@ INSERT INTO schema_migrations (version) VALUES (1);
 9. **Review Loop Protection**: `review_iteration` field and database constraints prevent infinite review cycles
 10. **Configurable Limits**: Review limits stored in `user_config` table for flexible policy management
 11. **Performance**: Indexes optimized for parallel agent queries and real-time dashboard updates
+12. **Core Integration**: Database module in core package provides functions following dependency injection patterns
+13. **Multi-Package Access**: Workflows, MCP server, and UI server all use core database functions
+
+## Database Module API (Core Package)
+
+### Function-Based Interface
+```typescript
+// Core database functions exported from @claude-codex/core
+export async function createInstance(
+  instance: InstanceRecord, 
+  db: DatabaseInterface = defaultDatabase
+): Promise<string>
+
+export async function updateInstanceStatus(
+  instanceId: string, 
+  status: InstanceStatus,
+  db: DatabaseInterface = defaultDatabase
+): Promise<void>
+
+export async function logMCPEvent(
+  event: MCPEventRecord,
+  db: DatabaseInterface = defaultDatabase
+): Promise<void>
+
+export async function getInstanceRelationships(
+  instanceId: string,
+  db: DatabaseInterface = defaultDatabase
+): Promise<RelationshipRecord[]>
+```
+
+### Usage by Other Packages
+```typescript
+// Workflows package
+import { createInstance, updateInstanceStatus } from '@claude-codex/core/database';
+
+// MCP server package
+import { logMCPEvent, getInstanceRelationships } from '@claude-codex/core/database';
+
+// UI server package
+import { getInstance, listInstances } from '@claude-codex/core/database';
+```
 
 ---
 

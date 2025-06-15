@@ -267,10 +267,10 @@ npx @claude-codex/ui
 4. Basic instance management (create, view, kill)
 
 **Dependencies:**
-- **Workflows Package**: Agent lifecycle orchestration (MISSING - 0% complete)
-- **UI Server**: REST API + WebSocket + Core package integration (5% complete)
-- **MCP Server**: Agent coordination tools (MISSING - 0% complete)
-- **Database Layer**: SQLite state persistence (MISSING - 0% complete)
+- **Workflows Package**: Agent lifecycle orchestration (NEW PACKAGE - 0% complete)
+- **Database Module**: SQLite operations in core package (NEW MODULE - 0% complete)
+- **MCP Server**: Agent coordination tools (NEW PACKAGE - 0% complete)
+- **UI Server**: REST API + WebSocket integration (5% complete)
 - **Core Package Integration**: Replace server mocks with real operations (MISSING)
 
 **Current Implementation Gap**: The core package (95% complete) and UI components (80% complete) exist, but the critical integration layers are missing.
