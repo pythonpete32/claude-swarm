@@ -1,0 +1,58 @@
+{
+  "name": "@claude-codex/core",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./git": {
+      "import": "./dist/core/git.js",
+      "types": "./dist/core/git.d.ts"
+    },
+    "./worktree": {
+      "import": "./dist/core/worktree.js",
+      "types": "./dist/core/worktree.d.ts"
+    },
+    "./github": {
+      "import": "./dist/core/github.js",
+      "types": "./dist/core/github.d.ts"
+    },
+    "./tmux": {
+      "import": "./dist/core/tmux.js",
+      "types": "./dist/core/tmux.d.ts"
+    },
+    "./claude": {
+      "import": "./dist/core/claude.js",
+      "types": "./dist/core/claude.d.ts"
+    },
+    "./files": {
+      "import": "./dist/core/files.js",
+      "types": "./dist/core/files.d.ts"
+    }
+  },
+  "scripts": {
+    "dev": "tsc --watch",
+    "build": "tsc",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write ."
+  },
+  "dependencies": {
+    "execa": "^9.6.0"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "@vitest/coverage-v8": "^3.2.3",
+    "vitest": "^3.2.3"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  }
+}

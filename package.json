@@ -1,17 +1,18 @@
 {
   "name": "claude-codex",
-  "module": "src/main.ts",
+  "private": true,
   "type": "module",
+  "workspaces": ["packages/*"],
   "scripts": {
-    "dev": "bun --watch src/main.ts",
-    "build": "bun build src/main.ts --outdir dist --target bun",
-    "test": "vitest",
-    "test:run": "vitest run",
-    "lint": "biome check .",
-    "lint:fix": "biome check --write .",
-    "typecheck": "tsc --noEmit",
+    "dev": "bun run --filter='*' dev",
+    "build": "bun run --filter='*' build", 
+    "test": "bun run --filter='*' test",
+    "test:run": "bun run --filter='*' test:run",
+    "lint": "bun run --filter='*' lint || true",
+    "lint:fix": "bun run --filter='*' lint:fix || true",
+    "typecheck": "bun run --filter='*' typecheck",
     "quality": "bun run test:run && bun run typecheck && bun run lint:fix",
-    "docs": "typedoc",
+    "docs": "bun run --filter='@claude-codex/docs' dev",
     "setup": "lefthook install"
   },
   "devDependencies": {

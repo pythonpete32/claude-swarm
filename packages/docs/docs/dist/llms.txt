@@ -1,0 +1,5 @@
+# Docs
+
+## Docs
+
+- [Getting Started](/getting-started): This guide will help you get started with Claude Codex.
