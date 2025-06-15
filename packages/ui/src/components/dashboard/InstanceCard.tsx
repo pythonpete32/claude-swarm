@@ -65,11 +65,11 @@ export function InstanceCard({
 
     if (diffHours > 0) {
       return `${diffHours}h ago`;
-    } else if (diffMinutes > 0) {
-      return `${diffMinutes}m ago`;
-    } else {
-      return "just now";
     }
+    if (diffMinutes > 0) {
+      return `${diffMinutes}m ago`;
+    }
+    return "just now";
   };
 
   return (

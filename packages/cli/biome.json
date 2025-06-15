@@ -1,0 +1,25 @@
+{
+  "$schema": "https://biomejs.dev/schemas/1.9.4/schema.json",
+  "extends": ["../../biome.json"],
+  "linter": {
+    "rules": {
+      "correctness": {
+        "noUnusedVariables": "warn"
+      },
+      "style": {
+        "useNodejsImportProtocol": "error",
+        "noNonNullAssertion": "warn"
+      },
+      "suspicious": {
+        "noExplicitAny": "warn"
+      }
+    }
+  },
+  "files": {
+    "include": ["src/**/*"],
+    "ignore": ["dist/**", "node_modules/**", "bin/**"]
+  },
+  "javascript": {
+    "globals": ["console", "process", "Buffer", "__dirname", "__filename"]
+  }
+}

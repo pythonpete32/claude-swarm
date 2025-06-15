@@ -93,16 +93,18 @@ function App() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <label className="text-sm font-medium">GitHub Token</label>
+              <label htmlFor="github-token" className="text-sm font-medium">GitHub Token</label>
               <input
+                id="github-token"
                 type="password"
                 placeholder="ghp_xxxxxxxxxxxx"
                 className="w-full mt-1 px-3 py-2 border rounded-md"
               />
             </div>
             <div>
-              <label className="text-sm font-medium">Default Repository</label>
+              <label htmlFor="default-repo" className="text-sm font-medium">Default Repository</label>
               <input
+                id="default-repo"
                 type="text"
                 placeholder="owner/repository"
                 className="w-full mt-1 px-3 py-2 border rounded-md"
@@ -117,8 +119,8 @@ function App() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <label className="text-sm font-medium">Default Editor</label>
-              <select className="w-full mt-1 px-3 py-2 border rounded-md">
+              <label htmlFor="default-editor" className="text-sm font-medium">Default Editor</label>
+              <select id="default-editor" className="w-full mt-1 px-3 py-2 border rounded-md">
                 <option>VS Code</option>
                 <option>Cursor</option>
                 <option>Vim</option>
@@ -126,8 +128,8 @@ function App() {
               </select>
             </div>
             <div>
-              <label className="text-sm font-medium">Terminal Theme</label>
-              <select className="w-full mt-1 px-3 py-2 border rounded-md">
+              <label htmlFor="terminal-theme" className="text-sm font-medium">Terminal Theme</label>
+              <select id="terminal-theme" className="w-full mt-1 px-3 py-2 border rounded-md">
                 <option>Dark</option>
                 <option>Light</option>
                 <option>High Contrast</option>
@@ -142,16 +144,17 @@ function App() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <label className="text-sm font-medium">Cleanup Policy</label>
-              <select className="w-full mt-1 px-3 py-2 border rounded-md">
+              <label htmlFor="cleanup-policy" className="text-sm font-medium">Cleanup Policy</label>
+              <select id="cleanup-policy" className="w-full mt-1 px-3 py-2 border rounded-md">
                 <option>Manual</option>
                 <option>Auto (7 days)</option>
                 <option>Auto (30 days)</option>
               </select>
             </div>
             <div>
-              <label className="text-sm font-medium">Worktree Base Path</label>
+              <label htmlFor="worktree-path" className="text-sm font-medium">Worktree Base Path</label>
               <input
+                id="worktree-path"
                 type="text"
                 placeholder="./worktrees"
                 className="w-full mt-1 px-3 py-2 border rounded-md"
@@ -166,16 +169,16 @@ function App() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
-              <label className="text-sm font-medium">Instance Status Updates</label>
-              <input type="checkbox" defaultChecked />
+              <label htmlFor="status-updates" className="text-sm font-medium">Instance Status Updates</label>
+              <input id="status-updates" type="checkbox" defaultChecked />
             </div>
             <div className="flex items-center justify-between">
-              <label className="text-sm font-medium">MCP Tool Notifications</label>
-              <input type="checkbox" defaultChecked />
+              <label htmlFor="mcp-notifications" className="text-sm font-medium">MCP Tool Notifications</label>
+              <input id="mcp-notifications" type="checkbox" defaultChecked />
             </div>
             <div className="flex items-center justify-between">
-              <label className="text-sm font-medium">GitHub Sync Alerts</label>
-              <input type="checkbox" />
+              <label htmlFor="github-alerts" className="text-sm font-medium">GitHub Sync Alerts</label>
+              <input id="github-alerts" type="checkbox" />
             </div>
           </CardContent>
         </Card>

@@ -139,12 +139,12 @@ export function TerminalView({ instanceId, sessionName, onBack }: TerminalViewPr
 
         case "error":
           console.error("PTY error:", msg.message);
-          terminal.write("\r\n❌ " + msg.message + "\r\n");
+          terminal.write(`\r\n❌ ${msg.message}\r\n`);
           break;
 
         case "exit":
           console.log("PTY session ended:", msg.message);
-          terminal.write("\r\n💀 " + msg.message + "\r\n");
+          terminal.write(`\r\n💀 ${msg.message}\r\n`);
           setIsConnected(false);
           break;
 
@@ -206,7 +206,7 @@ export function TerminalView({ instanceId, sessionName, onBack }: TerminalViewPr
       }
       terminal.dispose();
     };
-  }, [sessionName]);
+  }, []);
 
   const formatTimeAgo = (dateString: string) => {
     const date = new Date(dateString);

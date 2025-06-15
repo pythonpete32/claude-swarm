@@ -9,8 +9,8 @@
     "build": "echo 'No build needed for JS'",
     "start": "node src/index.js",
     "typecheck": "echo 'No typecheck for JS'",
-    "lint": "echo 'Linting skipped for JS server package'",
-    "lint:fix": "echo 'Linting skipped for JS server package'",
+    "lint": "bunx biome check .",
+    "lint:fix": "bunx biome check --write .",
     "test": "echo 'No tests configured for server package'",
     "test:run": "echo 'No tests configured for server package'"
   },
