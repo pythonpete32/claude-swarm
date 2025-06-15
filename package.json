@@ -10,6 +10,7 @@
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "typecheck": "tsc --noEmit",
+    "quality": "bun run test:run && bun run typecheck && bun run lint:fix",
     "docs": "typedoc",
     "setup": "lefthook install"
   },
@@ -23,5 +24,8 @@
   },
   "peerDependencies": {
     "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "execa": "^9.6.0"
   }
 }
