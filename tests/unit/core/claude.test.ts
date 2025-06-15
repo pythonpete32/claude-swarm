@@ -6,6 +6,7 @@
  * Uses Test-Driven Development (TDD) methodology.
  */
 
+import type { ChildProcess } from "node:child_process";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { FileSystemInterface, PathInterface } from "../../../src/core/files";
 import { ERROR_CODES } from "../../../src/shared/errors";
@@ -53,7 +54,9 @@ import {
 } from "../../../src/core/claude";
 
 // Mock Process Operations for testing
-class MockProcessOperations implements ProcessOperationsInterface {
+class MockProcessOperations {
+  // Note: This doesn't fully implement ProcessOperationsInterface due to ChildProcess complexity
+  // We use type assertion when passing to functions that expect the interface
   private runningProcesses = new Map<number, ProcessInfo>();
   private processOutputs = new Map<string, { stdout: string; stderr: string; exitCode: number }>();
   private shouldThrow = new Map<string, Error>();
@@ -106,7 +109,11 @@ class MockProcessOperations implements ProcessOperationsInterface {
   }
 
   // ProcessOperationsInterface implementation
-  async spawn(command: string, args: string[], options: any = {}): Promise<any> {
+  async spawn(
+    command: string,
+    args: string[],
+    options: Record<string, unknown> = {},
+  ): Promise<ChildProcess> {
     this.callLog.push({ method: "spawn", args: [command, args, options] });
 
     const fullCommand = `${command} ${args.join(" ")}`;
@@ -124,13 +131,24 @@ class MockProcessOperations implements ProcessOperationsInterface {
         kill: vi.fn(),
         stdout: { on: vi.fn() },
         stderr: { on: vi.fn() },
-      };
+        stdin: null,
+        stdio: [null, null, null, null, null],
+        killed: false,
+        connected: false,
+        exitCode: null,
+        signalCode: null,
+        spawnargs: [command, ...args],
+        spawnfile: command,
+      } as unknown as ChildProcess;
     }
 
     throw new Error(`Unexpected spawn command: ${fullCommand}`);
   }
 
-  async exec(command: string, options: any = {}): Promise<{ stdout: string; stderr: string }> {
+  async exec(
+    command: string,
+    options: Record<string, unknown> = {},
+  ): Promise<{ stdout: string; stderr: string }> {
     this.callLog.push({ method: "exec", args: [command, options] });
 
     const error = this.shouldThrow.get(`exec:${command}`);
@@ -139,7 +157,11 @@ class MockProcessOperations implements ProcessOperationsInterface {
     const output = this.processOutputs.get(command);
     if (output) {
       if (output.exitCode !== 0) {
-        const execError = new Error(output.stderr || "Command failed") as any;
+        const execError = new Error(output.stderr || "Command failed") as Error & {
+          code: number;
+          stdout: string;
+          stderr: string;
+        };
         execError.code = output.exitCode;
         execError.stdout = output.stdout;
         execError.stderr = output.stderr;
@@ -678,7 +700,9 @@ describe("core-claude", () => {
   describe("validateClaudeInstallation (TDD Phase 2)", () => {
     it("should validate successful Claude Code installation", async () => {
       // Act
-      const result = await validateClaudeInstallation(mockProcessOps);
+      const result = await validateClaudeInstallation(
+        mockProcessOps as unknown as ProcessOperationsInterface,
+      );
 
       // Assert
       expect(result.isInstalled).toBe(true);
@@ -697,7 +721,9 @@ describe("core-claude", () => {
       mockProcessOps.setProcessOutput("which claude", "", "command not found", 1);
 
       // Act & Assert
-      await expect(validateClaudeInstallation(mockProcessOps)).rejects.toThrow("CLAUDE_NOT_FOUND");
+      await expect(
+        validateClaudeInstallation(mockProcessOps as unknown as ProcessOperationsInterface),
+      ).rejects.toThrow("CLAUDE_NOT_FOUND");
     });
 
     it("should handle incompatible Claude Code version", async () => {
@@ -705,7 +731,9 @@ describe("core-claude", () => {
       mockProcessOps.setProcessOutput("claude --version", "Claude Code v1.0.0", "", 0);
 
       // Act
-      const result = await validateClaudeInstallation(mockProcessOps);
+      const result = await validateClaudeInstallation(
+        mockProcessOps as unknown as ProcessOperationsInterface,
+      );
 
       // Assert
       expect(result.isInstalled).toBe(true);
@@ -718,9 +746,9 @@ describe("core-claude", () => {
       mockProcessOps.setProcessOutput("claude --version", "", "Permission denied", 126);
 
       // Act & Assert
-      await expect(validateClaudeInstallation(mockProcessOps)).rejects.toThrow(
-        "CLAUDE_LAUNCH_FAILED",
-      );
+      await expect(
+        validateClaudeInstallation(mockProcessOps as unknown as ProcessOperationsInterface),
+      ).rejects.toThrow("CLAUDE_LAUNCH_FAILED");
     });
   });
 
@@ -733,7 +761,11 @@ describe("core-claude", () => {
 
     it("should launch Claude session with default configuration", async () => {
       // Act
-      const result = await launchClaudeSession(defaultConfig, mockClaude, mockProcessOps);
+      const result = await launchClaudeSession(
+        defaultConfig,
+        mockClaude,
+        mockProcessOps as unknown as ProcessOperationsInterface,
+      );
 
       // Assert
       expect(result.success).toBe(true);
@@ -751,9 +783,13 @@ describe("core-claude", () => {
       const invalidConfig = { ...defaultConfig, workspacePath: "" };
 
       // Act & Assert
-      await expect(launchClaudeSession(invalidConfig, mockClaude, mockProcessOps)).rejects.toThrow(
-        "validation",
-      );
+      await expect(
+        launchClaudeSession(
+          invalidConfig,
+          mockClaude,
+          mockProcessOps as unknown as ProcessOperationsInterface,
+        ),
+      ).rejects.toThrow("validation");
     });
 
     it("should handle Claude launch failures", async () => {
@@ -763,7 +799,11 @@ describe("core-claude", () => {
 
       // Act & Assert
       await expect(
-        launchClaudeSession(defaultConfig, failingMockClaude, mockProcessOps),
+        launchClaudeSession(
+          defaultConfig,
+          failingMockClaude,
+          mockProcessOps as unknown as ProcessOperationsInterface,
+        ),
       ).rejects.toThrow("CLAUDE_LAUNCH_FAILED");
     });
 
@@ -775,7 +815,11 @@ describe("core-claude", () => {
       };
 
       // Act
-      const result = await launchClaudeSession(configWithContext, mockClaude, mockProcessOps);
+      const result = await launchClaudeSession(
+        configWithContext,
+        mockClaude,
+        mockProcessOps as unknown as ProcessOperationsInterface,
+      );
 
       // Assert
       expect(result.success).toBe(true);
@@ -790,7 +834,11 @@ describe("core-claude", () => {
 
       // Act & Assert
       await expect(
-        launchClaudeSession(timeoutConfig, timeoutMockClaude, mockProcessOps),
+        launchClaudeSession(
+          timeoutConfig,
+          timeoutMockClaude,
+          mockProcessOps as unknown as ProcessOperationsInterface,
+        ),
       ).rejects.toThrow("CLAUDE_TIMEOUT");
     });
   });
@@ -822,7 +870,10 @@ describe("core-claude", () => {
 
     it("should discover active Claude sessions", async () => {
       // Act
-      const result = await findActiveClaudeSessions(mockClaude, mockProcessOps);
+      const result = await findActiveClaudeSessions(
+        mockClaude,
+        mockProcessOps as unknown as ProcessOperationsInterface,
+      );
 
       // Assert
       expect(result.totalFound).toBeGreaterThan(0);
@@ -836,7 +887,10 @@ describe("core-claude", () => {
       mockProcessOps.reset(); // Clear all processes
 
       // Act
-      const result = await findActiveClaudeSessions(mockClaude, mockProcessOps);
+      const result = await findActiveClaudeSessions(
+        mockClaude,
+        mockProcessOps as unknown as ProcessOperationsInterface,
+      );
 
       // Assert
       expect(result.totalFound).toBe(0);
@@ -854,9 +908,12 @@ describe("core-claude", () => {
       );
 
       // Act & Assert
-      await expect(findActiveClaudeSessions(mockClaude, failingProcessOps)).rejects.toThrow(
-        "Failed to discover Claude sessions",
-      );
+      await expect(
+        findActiveClaudeSessions(
+          mockClaude,
+          failingProcessOps as unknown as ProcessOperationsInterface,
+        ),
+      ).rejects.toThrow("Failed to discover Claude sessions");
     });
 
     it("should filter sessions by workspace path when specified", async () => {

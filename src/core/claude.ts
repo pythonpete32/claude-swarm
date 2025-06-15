@@ -5,14 +5,10 @@
  * session management, and intelligent code generation across all Claude Swarm operations.
  */
 
-import { exec, spawn } from "node:child_process";
-import { createHash } from "node:crypto";
-import { promises as fs } from "node:fs";
-import * as path from "node:path";
+import { type ChildProcess, exec, spawn } from "node:child_process";
 import { promisify } from "node:util";
 
 import { ERROR_CODES, ErrorFactory } from "../shared/errors";
-import { CommonValidators } from "../shared/validation";
 import type { FileSystemInterface, PathInterface } from "./files";
 import { defaultFileSystem, defaultPath } from "./files";
 
@@ -181,8 +177,11 @@ export interface SessionDiscoveryOptions {
  * Process operations interface for dependency injection
  */
 export interface ProcessOperationsInterface {
-  spawn(command: string, args: string[], options?: any): Promise<any>;
-  exec(command: string, options?: any): Promise<{ stdout: string; stderr: string }>;
+  spawn(command: string, args: string[], options?: Record<string, unknown>): Promise<ChildProcess>;
+  exec(
+    command: string,
+    options?: Record<string, unknown>,
+  ): Promise<{ stdout: string; stderr: string }>;
   kill(pid: number, signal?: string): Promise<boolean>;
   findProcesses(pattern: string): Promise<ProcessInfo[]>;
   isProcessRunning(pid: number): Promise<boolean>;
@@ -264,14 +263,18 @@ export interface ContextHandleResult {
  * Default process operations implementation
  */
 class DefaultProcessOperations implements ProcessOperationsInterface {
-  async spawn(command: string, args: string[], options: any = {}): Promise<any> {
+  async spawn(
+    command: string,
+    args: string[],
+    options: Record<string, unknown> = {},
+  ): Promise<ChildProcess> {
     return new Promise((resolve, reject) => {
       const child = spawn(command, args, {
         stdio: ["pipe", "pipe", "pipe"],
         ...options,
       });
 
-      const timeout = options.timeout || 30000;
+      const timeout = (options.timeout as number) || 30000;
       const timer = setTimeout(() => {
         child.kill();
         reject(new Error(`Process timeout after ${timeout}ms`));
@@ -289,9 +292,12 @@ class DefaultProcessOperations implements ProcessOperationsInterface {
     });
   }
 
-  async exec(command: string, options: any = {}): Promise<{ stdout: string; stderr: string }> {
+  async exec(
+    command: string,
+    options: Record<string, unknown> = {},
+  ): Promise<{ stdout: string; stderr: string }> {
     const result = await execAsync(command, {
-      timeout: options.timeout || 10000,
+      timeout: (options.timeout as number) || 10000,
       ...options,
     });
     return {
@@ -364,7 +370,7 @@ class DefaultClaudeInterface implements ClaudeInterface {
   }
 
   async launch(config: ClaudeSessionConfig): Promise<ClaudeSession> {
-    const sessionId = `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const sessionId = `session-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
 
     try {
       // Spawn actual Claude Code process
@@ -399,7 +405,7 @@ class DefaultClaudeInterface implements ClaudeInterface {
 
       const session: ClaudeSession = {
         id: sessionId,
-        pid: childProcess.pid,
+        pid: childProcess.pid || 0,
         workspacePath: config.workspacePath,
         status: "launching",
         startTime: new Date(),
@@ -676,7 +682,7 @@ class DefaultClaudeInterface implements ClaudeInterface {
     }
   }
 
-  private async waitForClaudeReady(sessionId: string, childProcess: any): Promise<void> {
+  private async waitForClaudeReady(sessionId: string, childProcess: ChildProcess): Promise<void> {
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
         reject(new Error("Claude session startup timeout"));
@@ -797,7 +803,7 @@ export async function validateClaudeInstallation(
     };
   } catch (error) {
     if (
-      (error as any).code === "EACCES" ||
+      (error as NodeJS.ErrnoException).code === "EACCES" ||
       (error as Error).message.includes("Permission denied")
     ) {
       throw ErrorFactory.claude(
@@ -1230,7 +1236,7 @@ export async function configureClaudeSettings(
     const configPath = pathOps.join(claudeDirPath, "config.json");
 
     // Load existing config or create new one
-    let existingConfig: any = {};
+    let existingConfig: Record<string, unknown> = {};
     try {
       const configContent = await fileSystem.readFile(configPath, "utf-8");
       existingConfig = JSON.parse(configContent);
@@ -1243,11 +1249,11 @@ export async function configureClaudeSettings(
       ...existingConfig,
       ...config,
       modelPreferences: {
-        ...existingConfig.modelPreferences,
+        ...((existingConfig.modelPreferences as Record<string, unknown>) || {}),
         ...config.modelPreferences,
       },
       customPrompts: {
-        ...existingConfig.customPrompts,
+        ...((existingConfig.customPrompts as Record<string, unknown>) || {}),
         ...config.customPrompts,
       },
       lastUpdated: new Date().toISOString(),
