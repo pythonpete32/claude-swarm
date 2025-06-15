@@ -6,14 +6,148 @@
  * development and review workflows.
  */
 
-import { exec } from "node:child_process";
-import { promisify } from "node:util";
+import { execa } from "execa";
 
 import { getConfig } from "@/shared/config";
 import { ERROR_CODES, ErrorFactory } from "@/shared/errors";
 import { CommonValidators, TmuxValidation } from "@/shared/validation";
 
-const execAsync = promisify(exec);
+/**
+ * Secure command execution utility for tmux operations.
+ * Uses execa for safe command execution without shell injection vulnerabilities.
+ */
+async function execSecure(
+  command: string,
+  args: string[] = [],
+  options?: { env?: Record<string, string> },
+): Promise<{ stdout: string; stderr: string }> {
+  try {
+    const result = await execa(command, args, {
+      env: options?.env ? { ...process.env, ...options.env } : undefined,
+      timeout: 30000, // 30 second timeout
+    });
+    return {
+      stdout: result.stdout,
+      stderr: result.stderr,
+    };
+  } catch (error) {
+    if (error instanceof Error && "stdout" in error && "stderr" in error) {
+      const execaError = error as Error & { stdout?: string; stderr?: string };
+      return {
+        stdout: execaError.stdout || "",
+        stderr: execaError.stderr || error.message,
+      };
+    }
+    throw error;
+  }
+}
+
+/**
+ * Sanitizes session names to prevent command injection.
+ * Only allows alphanumeric characters, hyphens, and underscores.
+ */
+function sanitizeSessionName(name: string): string {
+  if (!name || typeof name !== "string") {
+    throw ErrorFactory.tmux(
+      ERROR_CODES.TMUX_INVALID_SESSION_NAME,
+      "Session name must be a non-empty string",
+      { name },
+    );
+  }
+
+  // Allow only safe characters: letters, numbers, hyphens, underscores
+  const sanitized = name.replace(/[^a-zA-Z0-9_-]/g, "_");
+
+  if (sanitized !== name) {
+    throw ErrorFactory.tmux(
+      ERROR_CODES.TMUX_INVALID_SESSION_NAME,
+      `Session name contains invalid characters. Use only letters, numbers, hyphens, and underscores. Got: '${name}'`,
+      { name, sanitized },
+    );
+  }
+
+  if (sanitized.length === 0 || sanitized.length > 100) {
+    throw ErrorFactory.tmux(
+      ERROR_CODES.TMUX_INVALID_SESSION_NAME,
+      "Session name must be between 1 and 100 characters",
+      { name, length: sanitized.length },
+    );
+  }
+
+  return sanitized;
+}
+
+/**
+ * Validates and sanitizes working directory paths.
+ */
+function sanitizeWorkingDirectory(path: string): string {
+  if (!path || typeof path !== "string") {
+    throw ErrorFactory.tmux(
+      ERROR_CODES.TMUX_INVALID_DIRECTORY,
+      "Working directory must be a non-empty string",
+      { path },
+    );
+  }
+
+  // Basic path validation - should be absolute path
+  if (!path.startsWith("/")) {
+    throw ErrorFactory.tmux(
+      ERROR_CODES.TMUX_INVALID_DIRECTORY,
+      "Working directory must be an absolute path",
+      { path },
+    );
+  }
+
+  // Check for dangerous patterns
+  const dangerousPatterns = ["..", ";", "|", "&", "$", "`", "$(", "${"];
+  for (const pattern of dangerousPatterns) {
+    if (path.includes(pattern)) {
+      throw ErrorFactory.tmux(
+        ERROR_CODES.TMUX_INVALID_DIRECTORY,
+        `Working directory contains dangerous pattern: ${pattern}`,
+        { path, pattern },
+      );
+    }
+  }
+
+  return path;
+}
+
+/**
+ * Sanitizes environment variable keys and values.
+ */
+function sanitizeEnvironmentVariable(key: string, value: string): { key: string; value: string } {
+  // Validate key
+  if (!key || typeof key !== "string" || !/^[A-Z_][A-Z0-9_]*$/i.test(key)) {
+    throw ErrorFactory.tmux(
+      ERROR_CODES.TMUX_INVALID_SESSION_NAME,
+      `Invalid environment variable key: ${key}`,
+      { key },
+    );
+  }
+
+  // Validate value - no command substitution or other dangerous patterns
+  if (!value || typeof value !== "string") {
+    throw ErrorFactory.tmux(
+      ERROR_CODES.TMUX_INVALID_SESSION_NAME,
+      "Environment variable value must be a non-empty string",
+      { key, value },
+    );
+  }
+
+  const dangerousPatterns = ["$(", "${", "`", ";", "|", "&", "\n", "\r"];
+  for (const pattern of dangerousPatterns) {
+    if (value.includes(pattern)) {
+      throw ErrorFactory.tmux(
+        ERROR_CODES.TMUX_INVALID_SESSION_NAME,
+        `Environment variable value contains dangerous pattern: ${pattern}`,
+        { key, value, pattern },
+      );
+    }
+  }
+
+  return { key, value };
+}
 
 /**
  * Tmux session information.
@@ -141,7 +275,7 @@ export interface TmuxValidationResult {
  */
 export async function validateTmuxAvailable(): Promise<TmuxValidationResult> {
   try {
-    const { stdout } = await execAsync("tmux -V");
+    const { stdout } = await execSecure("tmux", ["-V"]);
     const version = stdout.trim().replace("tmux ", "");
 
     return {
@@ -177,13 +311,23 @@ export async function validateTmuxAvailable(): Promise<TmuxValidationResult> {
  * ```
  */
 export async function createTmuxSession(options: CreateTmuxSessionOptions): Promise<TmuxSession> {
-  // Validate inputs
+  // Sanitize and validate all inputs first (security-critical)
+  const sessionName = sanitizeSessionName(options.name);
+  const workingDirectory = sanitizeWorkingDirectory(options.workingDirectory);
+
+  // Validate environment variables early
+  if (options.environment) {
+    for (const [key, value] of Object.entries(options.environment)) {
+      sanitizeEnvironmentVariable(key, value);
+    }
+  }
+
   const validation = CommonValidators.tmuxSession();
-  if (!validation.validate(options.name)) {
+  if (!validation.validate(sessionName)) {
     throw ErrorFactory.tmux(
       ERROR_CODES.TMUX_INVALID_SESSION_NAME,
-      `Invalid session name: ${options.name}`,
-      { name: options.name },
+      `Invalid session name: ${sessionName}`,
+      { name: sessionName },
     );
   }
 
@@ -197,12 +341,12 @@ export async function createTmuxSession(options: CreateTmuxSessionOptions): Prom
 
   // Check if session already exists by trying to list it directly
   try {
-    await execAsync(`tmux has-session -t "${options.name}"`);
+    await execSecure("tmux", ["has-session", "-t", sessionName]);
     // If has-session succeeds, session exists
     throw ErrorFactory.tmux(
       ERROR_CODES.TMUX_SESSION_EXISTS,
-      `Session '${options.name}' already exists`,
-      { name: options.name },
+      `Session '${sessionName}' already exists`,
+      { name: sessionName },
     );
   } catch (error) {
     // If it's our own error, re-throw it
@@ -214,12 +358,12 @@ export async function createTmuxSession(options: CreateTmuxSessionOptions): Prom
 
   // Validate working directory exists
   try {
-    await execAsync(`test -d "${options.workingDirectory}"`);
+    await execSecure("test", ["-d", workingDirectory]);
   } catch {
     throw ErrorFactory.tmux(
       ERROR_CODES.TMUX_INVALID_DIRECTORY,
-      `Working directory does not exist: ${options.workingDirectory}`,
-      { workingDirectory: options.workingDirectory },
+      `Working directory does not exist: ${workingDirectory}`,
+      { workingDirectory },
     );
   }
 
@@ -227,34 +371,37 @@ export async function createTmuxSession(options: CreateTmuxSessionOptions): Prom
     const _config = getConfig();
     const detached = options.detached !== false;
 
-    // Build tmux command
-    let command = "tmux new-session";
-    if (detached) command += " -d";
-    command += ` -s "${options.name}"`;
-    command += ` -c "${options.workingDirectory}"`;
-
-    // Add environment variables
-    if (options.environment) {
-      for (const [key, value] of Object.entries(options.environment)) {
-        command = `${key}="${value}" ${command}`;
-      }
-    }
+    // Build tmux command arguments securely
+    const args: string[] = ["new-session"];
+    if (detached) args.push("-d");
+    args.push("-s", sessionName);
+    args.push("-c", workingDirectory);
 
     // Add initial shell command if provided
     if (options.shellCommand) {
-      command += ` "${options.shellCommand}"`;
+      args.push(options.shellCommand);
     }
 
-    await execAsync(command);
+    // Sanitize environment variables
+    let env: Record<string, string> | undefined;
+    if (options.environment) {
+      env = {};
+      for (const [key, value] of Object.entries(options.environment)) {
+        const sanitized = sanitizeEnvironmentVariable(key, value);
+        env[sanitized.key] = sanitized.value;
+      }
+    }
+
+    await execSecure("tmux", args, { env });
 
     // Get session info to return
-    return await getSessionInfo(options.name);
+    return await getSessionInfo(sessionName);
   } catch (error) {
     throw ErrorFactory.tmux(
       ERROR_CODES.TMUX_CREATION_FAILED,
-      `Failed to create tmux session '${options.name}'`,
+      `Failed to create tmux session '${sessionName}'`,
       {
-        name: options.name,
+        name: sessionName,
         error: error instanceof Error ? error.message : String(error),
       },
     );
@@ -281,40 +428,73 @@ export async function launchProcessInSession(
   sessionName: string,
   options: LaunchProcessOptions,
 ): Promise<void> {
+  // Sanitize session name
+  const sanitizedSessionName = sanitizeSessionName(sessionName);
+
+  // Validate command and arguments early (security-critical)
+  if (!options.command || typeof options.command !== "string") {
+    throw ErrorFactory.tmux(ERROR_CODES.TMUX_COMMAND_FAILED, "Command must be a non-empty string", {
+      command: options.command,
+    });
+  }
+
+  // Sanitize command and arguments
+  const args = options.args || [];
+  for (const arg of args) {
+    if (typeof arg !== "string") {
+      throw ErrorFactory.tmux(
+        ERROR_CODES.TMUX_COMMAND_FAILED,
+        "All command arguments must be strings",
+        { arg, type: typeof arg },
+      );
+    }
+    // Check for dangerous patterns in arguments
+    const dangerousPatterns = [";", "|", "&", "$", "`", "$(", "${", "\n", "\r"];
+    for (const pattern of dangerousPatterns) {
+      if (arg.includes(pattern)) {
+        throw ErrorFactory.tmux(
+          ERROR_CODES.TMUX_COMMAND_FAILED,
+          `Command argument contains dangerous pattern: ${pattern}`,
+          { arg, pattern },
+        );
+      }
+    }
+  }
+
   // Validate session exists and is active
-  const session = await getSessionInfo(sessionName);
+  const session = await getSessionInfo(sanitizedSessionName);
   if (!session.isActive) {
     throw ErrorFactory.tmux(
       ERROR_CODES.TMUX_SESSION_INACTIVE,
-      `Session '${sessionName}' exists but is not active`,
-      { name: sessionName },
+      `Session '${sanitizedSessionName}' exists but is not active`,
+      { name: sanitizedSessionName },
     );
   }
 
   try {
-    let target = sessionName;
+    let target = sanitizedSessionName;
 
     // Create new window if requested
     if (options.newWindow) {
-      const windowName = options.windowName || "new-window";
-      await execAsync(`tmux new-window -t "${sessionName}" -n "${windowName}"`);
-      target = `${sessionName}:${windowName}`;
+      const windowName = sanitizeSessionName(options.windowName || "new-window");
+      await execSecure("tmux", ["new-window", "-t", sanitizedSessionName, "-n", windowName]);
+      target = `${sanitizedSessionName}:${windowName}`;
     } else if (options.windowName) {
-      target = `${sessionName}:${options.windowName}`;
+      const sanitizedWindowName = sanitizeSessionName(options.windowName);
+      target = `${sanitizedSessionName}:${sanitizedWindowName}`;
     }
 
-    // Build command string
-    const args = options.args || [];
+    // Build full command safely - validation already done above
     const fullCommand = [options.command, ...args].join(" ");
 
-    // Send command to session
-    await execAsync(`tmux send-keys -t "${target}" "${fullCommand}" Enter`);
+    // Send command to session using secure execution
+    await execSecure("tmux", ["send-keys", "-t", target, fullCommand, "Enter"]);
   } catch (error) {
     throw ErrorFactory.tmux(
       ERROR_CODES.TMUX_COMMAND_FAILED,
-      `Failed to launch process in session '${sessionName}'`,
+      `Failed to launch process in session '${sanitizedSessionName}'`,
       {
-        sessionName,
+        sessionName: sanitizedSessionName,
         command: options.command,
         error: error instanceof Error ? error.message : String(error),
       },
@@ -340,13 +520,16 @@ export async function attachToSession(
   sessionName: string,
   options: AttachOptions = {},
 ): Promise<void> {
+  // Sanitize session name
+  const sanitizedSessionName = sanitizeSessionName(sessionName);
+
   // Validate session exists
-  const session = await getSessionInfo(sessionName);
+  const session = await getSessionInfo(sanitizedSessionName);
   if (!session.isActive) {
     throw ErrorFactory.tmux(
       ERROR_CODES.TMUX_SESSION_INACTIVE,
-      `Session '${sessionName}' exists but is not active`,
-      { name: sessionName },
+      `Session '${sanitizedSessionName}' exists but is not active`,
+      { name: sanitizedSessionName },
     );
   }
 
@@ -355,29 +538,31 @@ export async function attachToSession(
     throw ErrorFactory.tmux(
       ERROR_CODES.TMUX_NO_TTY,
       "Cannot attach to tmux session: not running in a terminal",
-      { sessionName },
+      { sessionName: sanitizedSessionName },
     );
   }
 
   try {
-    let command = `tmux attach-session -t "${sessionName}"`;
+    // Build tmux command arguments securely
+    const args: string[] = ["attach-session", "-t", sanitizedSessionName];
 
     if (options.readOnly) {
-      command += " -r";
+      args.push("-r");
     }
 
     if (options.targetWindow) {
-      command += ` -c "${options.targetWindow}"`;
+      const sanitizedTargetWindow = sanitizeSessionName(options.targetWindow);
+      args.push("-c", sanitizedTargetWindow);
     }
 
     // Note: This will take over the current terminal
-    await execAsync(command);
+    await execSecure("tmux", args);
   } catch (error) {
     throw ErrorFactory.tmux(
       ERROR_CODES.TMUX_ATTACH_FAILED,
-      `Failed to attach to session '${sessionName}'`,
+      `Failed to attach to session '${sanitizedSessionName}'`,
       {
-        sessionName,
+        sessionName: sanitizedSessionName,
         error: error instanceof Error ? error.message : String(error),
       },
     );
@@ -403,9 +588,12 @@ export async function killSession(
   sessionName: string,
   options: KillSessionOptions = {},
 ): Promise<void> {
+  // Sanitize session name
+  const sanitizedSessionName = sanitizeSessionName(sessionName);
+
   // Validate session exists
   try {
-    await getSessionInfo(sessionName);
+    await getSessionInfo(sanitizedSessionName);
   } catch (error) {
     if (error instanceof Error && error.message.includes("not found")) {
       // Session doesn't exist - nothing to kill
@@ -421,7 +609,7 @@ export async function killSession(
     if (!options.force) {
       // Try graceful shutdown first
       try {
-        await execAsync(`tmux send-keys -t "${sessionName}" "exit" Enter`);
+        await execSecure("tmux", ["send-keys", "-t", sanitizedSessionName, "exit", "Enter"]);
 
         // Wait for graceful shutdown
         let attempts = 0;
@@ -430,7 +618,7 @@ export async function killSession(
         while (attempts < maxAttempts) {
           await new Promise((resolve) => setTimeout(resolve, 1000));
           try {
-            await getSessionInfo(sessionName);
+            await getSessionInfo(sanitizedSessionName);
             attempts++;
           } catch {
             // Session is gone - graceful shutdown succeeded
@@ -443,13 +631,13 @@ export async function killSession(
     }
 
     // Force kill the session
-    await execAsync(`tmux kill-session -t "${sessionName}"`);
+    await execSecure("tmux", ["kill-session", "-t", sanitizedSessionName]);
   } catch (error) {
     throw ErrorFactory.tmux(
       ERROR_CODES.TMUX_KILL_FAILED,
-      `Failed to kill session '${sessionName}'`,
+      `Failed to kill session '${sanitizedSessionName}'`,
       {
-        sessionName,
+        sessionName: sanitizedSessionName,
         error: error instanceof Error ? error.message : String(error),
       },
     );
@@ -469,10 +657,35 @@ export async function killSession(
  * ```
  */
 export async function listSessions(pattern?: string): Promise<TmuxSession[]> {
+  // Sanitize pattern if provided
+  let sanitizedPattern: string | undefined;
+  if (pattern) {
+    if (typeof pattern !== "string") {
+      throw ErrorFactory.tmux(ERROR_CODES.TMUX_COMMAND_FAILED, "Pattern must be a string", {
+        pattern,
+        type: typeof pattern,
+      });
+    }
+    // Basic validation - no dangerous characters in pattern
+    const dangerousPatterns = [";", "|", "&", "$", "`", "$(", "${", "\n", "\r"];
+    for (const dangerous of dangerousPatterns) {
+      if (pattern.includes(dangerous)) {
+        throw ErrorFactory.tmux(
+          ERROR_CODES.TMUX_COMMAND_FAILED,
+          `Pattern contains dangerous character: ${dangerous}`,
+          { pattern, dangerous },
+        );
+      }
+    }
+    sanitizedPattern = pattern;
+  }
+
   try {
-    const { stdout } = await execAsync(
-      "tmux list-sessions -F '#{session_name}:#{session_created}:#{session_windows}:#{session_id}'",
-    );
+    const { stdout } = await execSecure("tmux", [
+      "list-sessions",
+      "-F",
+      "#{session_name}:#{session_created}:#{session_windows}:#{session_id}",
+    ]);
 
     const sessions: TmuxSession[] = [];
     const lines = stdout
@@ -484,7 +697,7 @@ export async function listSessions(pattern?: string): Promise<TmuxSession[]> {
       const [name, _created, _windowCount, _sessionId] = line.split(":");
 
       // Apply pattern filter if provided
-      if (pattern && !matchesPattern(name, pattern)) {
+      if (sanitizedPattern && !matchesPattern(name, sanitizedPattern)) {
         continue;
       }
 
@@ -521,10 +734,17 @@ export async function listSessions(pattern?: string): Promise<TmuxSession[]> {
  * ```
  */
 export async function getSessionInfo(sessionName: string): Promise<TmuxSession> {
+  // Sanitize session name
+  const sanitizedSessionName = sanitizeSessionName(sessionName);
+
   try {
-    const { stdout } = await execAsync(
-      `tmux display-message -t "${sessionName}" -p "#{session_name}:#{session_created}:#{session_windows}:#{session_path}:#{session_id}"`,
-    );
+    const { stdout } = await execSecure("tmux", [
+      "display-message",
+      "-t",
+      sanitizedSessionName,
+      "-p",
+      "#{session_name}:#{session_created}:#{session_windows}:#{session_path}:#{session_id}",
+    ]);
 
     const [name, createdTimestamp, windowCount, path, sessionId] = stdout.trim().split(":");
 
@@ -542,9 +762,9 @@ export async function getSessionInfo(sessionName: string): Promise<TmuxSession> 
   } catch (error) {
     throw ErrorFactory.tmux(
       ERROR_CODES.TMUX_SESSION_NOT_FOUND,
-      `Session '${sessionName}' not found`,
+      `Session '${sanitizedSessionName}' not found`,
       {
-        sessionName,
+        sessionName: sanitizedSessionName,
         error: error instanceof Error ? error.message : String(error),
       },
     );
@@ -570,61 +790,109 @@ export async function launchClaudeInSession(
   sessionName: string,
   options: ClaudeLaunchOptions,
 ): Promise<void> {
+  // Sanitize session name
+  const sanitizedSessionName = sanitizeSessionName(sessionName);
+
   // Validate session exists
-  const session = await getSessionInfo(sessionName);
+  const session = await getSessionInfo(sanitizedSessionName);
   if (!session.isActive) {
     throw ErrorFactory.tmux(
       ERROR_CODES.TMUX_SESSION_INACTIVE,
-      `Session '${sessionName}' exists but is not active`,
-      { name: sessionName },
+      `Session '${sanitizedSessionName}' exists but is not active`,
+      { name: sanitizedSessionName },
     );
   }
 
   // Check if Claude CLI is available
   try {
-    await execAsync("which claude");
+    await execSecure("which", ["claude"]);
   } catch {
     throw ErrorFactory.tmux(
       ERROR_CODES.TMUX_CLAUDE_NOT_AVAILABLE,
       "Claude CLI is not available in PATH",
-      { sessionName },
+      { sessionName: sanitizedSessionName },
     );
   }
 
   try {
-    // Build Claude command
+    // Sanitize Claude arguments
     const claudeArgs = options.claudeArgs || [];
-    const command = ["claude", ...claudeArgs];
+    const sanitizedArgs = claudeArgs.map((arg) => {
+      if (typeof arg !== "string") {
+        throw ErrorFactory.tmux(
+          ERROR_CODES.TMUX_COMMAND_FAILED,
+          "All Claude arguments must be strings",
+          { arg, type: typeof arg },
+        );
+      }
+      // Check for dangerous patterns in arguments
+      const dangerousPatterns = [";", "|", "&", "$", "`", "$(", "${", "\n", "\r"];
+      for (const pattern of dangerousPatterns) {
+        if (arg.includes(pattern)) {
+          throw ErrorFactory.tmux(
+            ERROR_CODES.TMUX_COMMAND_FAILED,
+            `Claude argument contains dangerous pattern: ${pattern}`,
+            { arg, pattern },
+          );
+        }
+      }
+      return arg;
+    });
 
     // Add working directory if specified
     if (options.workingDirectory) {
-      command.push("--workspace", options.workingDirectory);
+      const sanitizedWorkingDir = sanitizeWorkingDirectory(options.workingDirectory);
+      sanitizedArgs.push("--workspace", sanitizedWorkingDir);
     }
 
-    const _fullCommand = command.join(" ");
-
     // Launch Claude in the session
-    await launchProcessInSession(sessionName, {
+    await launchProcessInSession(sanitizedSessionName, {
       command: "claude",
-      args: claudeArgs,
+      args: sanitizedArgs,
       windowName: "claude",
       newWindow: true,
     });
 
     // Send initial prompt if provided
     if (options.prompt && options.autoStart !== false) {
+      // Validate and sanitize prompt
+      if (typeof options.prompt !== "string") {
+        throw ErrorFactory.tmux(ERROR_CODES.TMUX_COMMAND_FAILED, "Prompt must be a string", {
+          prompt: options.prompt,
+          type: typeof options.prompt,
+        });
+      }
+
+      // Check for dangerous patterns in prompt
+      const dangerousPatterns = [";", "|", "&", "$", "`", "$(", "${"];
+      for (const pattern of dangerousPatterns) {
+        if (options.prompt.includes(pattern)) {
+          throw ErrorFactory.tmux(
+            ERROR_CODES.TMUX_COMMAND_FAILED,
+            `Prompt contains dangerous pattern: ${pattern}`,
+            { prompt: options.prompt, pattern },
+          );
+        }
+      }
+
       // Wait a moment for Claude to start
       await new Promise((resolve) => setTimeout(resolve, 2000));
 
-      // Send the prompt
-      await execAsync(`tmux send-keys -t "${sessionName}:claude" "${options.prompt}" Enter`);
+      // Send the prompt using secure execution
+      await execSecure("tmux", [
+        "send-keys",
+        "-t",
+        `${sanitizedSessionName}:claude`,
+        options.prompt,
+        "Enter",
+      ]);
     }
   } catch (error) {
     throw ErrorFactory.tmux(
       ERROR_CODES.TMUX_LAUNCH_FAILED,
-      `Failed to launch Claude in session '${sessionName}'`,
+      `Failed to launch Claude in session '${sanitizedSessionName}'`,
       {
-        sessionName,
+        sessionName: sanitizedSessionName,
         error: error instanceof Error ? error.message : String(error),
       },
     );

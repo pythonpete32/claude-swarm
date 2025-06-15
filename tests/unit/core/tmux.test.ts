@@ -26,17 +26,12 @@ import {
   validateTmuxAvailable,
 } from "../../../src/core/tmux";
 
-// Create a mock for the exec function using vi.hoisted to ensure proper hoisting
-const mockExecAsync = vi.hoisted(() => vi.fn());
+// Create a mock for the execa function using vi.hoisted to ensure proper hoisting
+const mockExeca = vi.hoisted(() => vi.fn());
 
-// Mock child_process
-vi.mock("node:child_process", () => ({
-  exec: vi.fn(),
-}));
-
-// Mock promisify to return our hoisted mock function
-vi.mock("node:util", () => ({
-  promisify: vi.fn(() => mockExecAsync),
+// Mock execa
+vi.mock("execa", () => ({
+  execa: mockExeca,
 }));
 
 // Mock process.stdout.isTTY
@@ -51,7 +46,7 @@ describe("core-tmux", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockExecAsync.mockClear();
+    mockExeca.mockClear();
     // Reset process.stdout.isTTY to true by default
     (process.stdout as { isTTY: boolean }).isTTY = true;
   });
@@ -59,7 +54,7 @@ describe("core-tmux", () => {
   describe("validateTmuxAvailable (TDD Phase 1)", () => {
     it("should validate successful tmux installation", async () => {
       // Arrange
-      mockExecAsync.mockResolvedValueOnce({
+      mockExeca.mockResolvedValueOnce({
         stdout: "tmux 3.3a\n",
         stderr: "",
       });
@@ -71,12 +66,12 @@ describe("core-tmux", () => {
       expect(result.isValid).toBe(true);
       expect(result.version).toBe("3.3a");
       expect(result.issues).toHaveLength(0);
-      expect(mockExecAsync).toHaveBeenCalledWith("tmux -V");
+      expect(mockExeca).toHaveBeenCalledWith("tmux", ["-V"], { env: undefined, timeout: 30000 });
     });
 
     it("should handle tmux not installed", async () => {
       // Arrange
-      mockExecAsync.mockRejectedValueOnce(new Error("command not found"));
+      mockExeca.mockRejectedValueOnce(new Error("command not found"));
 
       // Act
       const result = await validateTmuxAvailable();
@@ -92,7 +87,7 @@ describe("core-tmux", () => {
 
     it("should extract version correctly from different tmux versions", async () => {
       // Test tmux 2.x format
-      mockExecAsync.mockResolvedValueOnce({
+      mockExeca.mockResolvedValueOnce({
         stdout: "tmux 2.8\n",
         stderr: "",
       });
@@ -115,28 +110,28 @@ describe("core-tmux", () => {
     it("should create tmux session with default options", async () => {
       // Arrange
       // Mock tmux version check
-      mockExecAsync.mockResolvedValueOnce({
+      mockExeca.mockResolvedValueOnce({
         stdout: "tmux 3.3a\n",
         stderr: "",
       });
 
       // Mock session existence check with has-session (should fail - session doesn't exist)
-      mockExecAsync.mockRejectedValueOnce(new Error("session not found"));
+      mockExeca.mockRejectedValueOnce(new Error("session not found"));
 
       // Mock directory existence check
-      mockExecAsync.mockResolvedValueOnce({
+      mockExeca.mockResolvedValueOnce({
         stdout: "",
         stderr: "",
       });
 
       // Mock session creation
-      mockExecAsync.mockResolvedValueOnce({
+      mockExeca.mockResolvedValueOnce({
         stdout: "",
         stderr: "",
       });
 
       // Mock getSessionInfo for return value
-      mockExecAsync.mockResolvedValueOnce({
+      mockExeca.mockResolvedValueOnce({
         stdout: `${testSessionName}:1640000000:1:/test/working/dir:$1234\n`,
         stderr: "",
       });
@@ -151,10 +146,19 @@ describe("core-tmux", () => {
       expect(result.windowCount).toBe(1);
 
       // Verify tmux commands called in correct order
-      expect(mockExecAsync).toHaveBeenCalledWith("tmux -V");
-      expect(mockExecAsync).toHaveBeenCalledWith(`test -d "${testWorkingDir}"`);
-      expect(mockExecAsync).toHaveBeenCalledWith(
-        `tmux new-session -d -s "${testSessionName}" -c "${testWorkingDir}"`,
+      expect(mockExeca).toHaveBeenCalledWith("tmux", ["-V"], { env: undefined, timeout: 30000 });
+      expect(mockExeca).toHaveBeenCalledWith("tmux", ["has-session", "-t", testSessionName], {
+        env: undefined,
+        timeout: 30000,
+      });
+      expect(mockExeca).toHaveBeenCalledWith("test", ["-d", testWorkingDir], {
+        env: undefined,
+        timeout: 30000,
+      });
+      expect(mockExeca).toHaveBeenCalledWith(
+        "tmux",
+        ["new-session", "-d", "-s", testSessionName, "-c", testWorkingDir],
+        { env: undefined, timeout: 30000 },
       );
     });
 
@@ -169,28 +173,28 @@ describe("core-tmux", () => {
       };
 
       // Mock tmux version check
-      mockExecAsync.mockResolvedValueOnce({
+      mockExeca.mockResolvedValueOnce({
         stdout: "tmux 3.3a\n",
         stderr: "",
       });
 
       // Mock session existence check with has-session (should fail - session doesn't exist)
-      mockExecAsync.mockRejectedValueOnce(new Error("session not found"));
+      mockExeca.mockRejectedValueOnce(new Error("session not found"));
 
       // Mock directory existence check
-      mockExecAsync.mockResolvedValueOnce({
+      mockExeca.mockResolvedValueOnce({
         stdout: "",
         stderr: "",
       });
 
       // Mock session creation
-      mockExecAsync.mockResolvedValueOnce({
+      mockExeca.mockResolvedValueOnce({
         stdout: "",
         stderr: "",
       });
 
       // Mock getSessionInfo for return value
-      mockExecAsync.mockResolvedValueOnce({
+      mockExeca.mockResolvedValueOnce({
         stdout: `${testSessionName}:1640000000:1:/test/working/dir:$1234\n`,
         stderr: "",
       });
@@ -199,15 +203,22 @@ describe("core-tmux", () => {
       await createTmuxSession(customOptions);
 
       // Assert
-      expect(mockExecAsync).toHaveBeenCalledWith(
-        `DEBUG="true" NODE_ENV="test" tmux new-session -s "${testSessionName}" -c "${testWorkingDir}" "bash"`,
+      // Check that the tmux new-session call was made with the correct arguments and environment
+      expect(mockExeca).toHaveBeenNthCalledWith(
+        4,
+        "tmux",
+        ["new-session", "-s", testSessionName, "-c", testWorkingDir, "bash"],
+        {
+          env: expect.objectContaining({ DEBUG: "true", NODE_ENV: "test" }),
+          timeout: 30000,
+        },
       );
     });
 
     it("should handle tmux not available", async () => {
       // Arrange - mock tmux not available
-      mockExecAsync.mockReset();
-      mockExecAsync.mockRejectedValueOnce(new Error("command not found"));
+      mockExeca.mockReset();
+      mockExeca.mockRejectedValueOnce(new Error("command not found"));
 
       // Act & Assert
       await expect(createTmuxSession(defaultOptions)).rejects.toThrow("tmux is not available");
@@ -215,11 +226,11 @@ describe("core-tmux", () => {
 
     it("should handle session already exists", async () => {
       // Arrange - mock session already exists
-      mockExecAsync.mockReset();
+      mockExeca.mockReset();
       // Mock tmux available
-      mockExecAsync.mockResolvedValueOnce({ stdout: "tmux 3.3a\n", stderr: "" });
+      mockExeca.mockResolvedValueOnce({ stdout: "tmux 3.3a\n", stderr: "" });
       // Mock session exists (has-session succeeds - this should trigger the error)
-      mockExecAsync.mockResolvedValueOnce({ stdout: "", stderr: "" });
+      mockExeca.mockResolvedValueOnce({ stdout: "", stderr: "" });
 
       // Act & Assert
       await expect(createTmuxSession(defaultOptions)).rejects.toThrow("already exists");
@@ -227,13 +238,13 @@ describe("core-tmux", () => {
 
     it("should handle invalid working directory", async () => {
       // Arrange
-      mockExecAsync.mockReset();
+      mockExeca.mockReset();
       // Mock tmux available
-      mockExecAsync.mockResolvedValueOnce({ stdout: "tmux 3.3a\n", stderr: "" });
+      mockExeca.mockResolvedValueOnce({ stdout: "tmux 3.3a\n", stderr: "" });
       // Mock session doesn't exist (has-session fails)
-      mockExecAsync.mockRejectedValueOnce(new Error("session not found"));
+      mockExeca.mockRejectedValueOnce(new Error("session not found"));
       // Mock directory doesn't exist
-      mockExecAsync.mockRejectedValueOnce(new Error("No such file or directory"));
+      mockExeca.mockRejectedValueOnce(new Error("No such file or directory"));
 
       // Act & Assert
       await expect(createTmuxSession(defaultOptions)).rejects.toThrow("does not exist");
@@ -241,15 +252,15 @@ describe("core-tmux", () => {
 
     it("should handle session creation failure", async () => {
       // Arrange
-      mockExecAsync.mockReset();
+      mockExeca.mockReset();
       // Mock successful validations
-      mockExecAsync.mockResolvedValueOnce({ stdout: "tmux 3.3a\n", stderr: "" });
+      mockExeca.mockResolvedValueOnce({ stdout: "tmux 3.3a\n", stderr: "" });
       // Mock session doesn't exist (has-session fails)
-      mockExecAsync.mockRejectedValueOnce(new Error("session not found"));
+      mockExeca.mockRejectedValueOnce(new Error("session not found"));
       // Mock directory exists
-      mockExecAsync.mockResolvedValueOnce({ stdout: "", stderr: "" });
+      mockExeca.mockResolvedValueOnce({ stdout: "", stderr: "" });
       // Mock session creation failure
-      mockExecAsync.mockRejectedValueOnce(new Error("tmux: failed to create session"));
+      mockExeca.mockRejectedValueOnce(new Error("tmux: failed to create session"));
 
       // Act & Assert
       await expect(createTmuxSession(defaultOptions)).rejects.toThrow(
@@ -269,13 +280,13 @@ describe("core-tmux", () => {
     it("should launch process in existing session", async () => {
       // Arrange
       // Mock getSessionInfo - session exists and is active
-      mockExecAsync.mockResolvedValueOnce({
+      mockExeca.mockResolvedValueOnce({
         stdout: `${testSessionName}:1640000000:1:/test/working/dir:$1234\n`,
         stderr: "",
       });
 
       // Mock send-keys command
-      mockExecAsync.mockResolvedValueOnce({
+      mockExeca.mockResolvedValueOnce({
         stdout: "",
         stderr: "",
       });
@@ -284,8 +295,10 @@ describe("core-tmux", () => {
       await launchProcessInSession(testSessionName, launchOptions);
 
       // Assert
-      expect(mockExecAsync).toHaveBeenCalledWith(
-        `tmux send-keys -t "${testSessionName}" "npm run dev" Enter`,
+      expect(mockExeca).toHaveBeenCalledWith(
+        "tmux",
+        ["send-keys", "-t", testSessionName, "npm run dev", "Enter"],
+        { env: undefined, timeout: 30000 },
       );
     });
 
@@ -298,19 +311,19 @@ describe("core-tmux", () => {
       };
 
       // Mock getSessionInfo - session exists and is active
-      mockExecAsync.mockResolvedValueOnce({
+      mockExeca.mockResolvedValueOnce({
         stdout: `${testSessionName}:1640000000:1:/test/working/dir:$1234\n`,
         stderr: "",
       });
 
       // Mock new window creation
-      mockExecAsync.mockResolvedValueOnce({
+      mockExeca.mockResolvedValueOnce({
         stdout: "",
         stderr: "",
       });
 
       // Mock send-keys command
-      mockExecAsync.mockResolvedValueOnce({
+      mockExeca.mockResolvedValueOnce({
         stdout: "",
         stderr: "",
       });
@@ -319,18 +332,22 @@ describe("core-tmux", () => {
       await launchProcessInSession(testSessionName, optionsWithNewWindow);
 
       // Assert
-      expect(mockExecAsync).toHaveBeenCalledWith(
-        `tmux new-window -t "${testSessionName}" -n "dev-server"`,
+      expect(mockExeca).toHaveBeenCalledWith(
+        "tmux",
+        ["new-window", "-t", testSessionName, "-n", "dev-server"],
+        { env: undefined, timeout: 30000 },
       );
-      expect(mockExecAsync).toHaveBeenCalledWith(
-        `tmux send-keys -t "${testSessionName}:dev-server" "npm run dev" Enter`,
+      expect(mockExeca).toHaveBeenCalledWith(
+        "tmux",
+        ["send-keys", "-t", `${testSessionName}:dev-server`, "npm run dev", "Enter"],
+        { env: undefined, timeout: 30000 },
       );
     });
 
     it("should handle session not found", async () => {
       // Arrange
-      mockExecAsync.mockReset();
-      mockExecAsync.mockRejectedValueOnce(new Error("session not found"));
+      mockExeca.mockReset();
+      mockExeca.mockRejectedValueOnce(new Error("session not found"));
 
       // Act & Assert
       await expect(launchProcessInSession(testSessionName, launchOptions)).rejects.toThrow(
@@ -340,14 +357,14 @@ describe("core-tmux", () => {
 
     it("should handle inactive session", async () => {
       // Arrange - create inactive session info
-      mockExecAsync.mockReset();
-      mockExecAsync.mockResolvedValueOnce({
+      mockExeca.mockReset();
+      mockExeca.mockResolvedValueOnce({
         stdout: `${testSessionName}:1640000000:1:/test/working/dir:$1234\n`,
         stderr: "",
       });
 
       // Mock the session as inactive by simulating an error in send-keys
-      mockExecAsync.mockRejectedValueOnce(new Error("session not active"));
+      mockExeca.mockRejectedValueOnce(new Error("session not active"));
 
       // Act & Assert
       await expect(launchProcessInSession(testSessionName, launchOptions)).rejects.toThrow(
@@ -359,13 +376,13 @@ describe("core-tmux", () => {
   describe("attachToSession (TDD Phase 2)", () => {
     beforeEach(() => {
       // Mock getSessionInfo - session exists and is active
-      mockExecAsync.mockResolvedValueOnce({
+      mockExeca.mockResolvedValueOnce({
         stdout: `${testSessionName}:1640000000:1:/test/working/dir:$1234\n`,
         stderr: "",
       });
 
       // Mock attach command
-      mockExecAsync.mockResolvedValueOnce({
+      mockExeca.mockResolvedValueOnce({
         stdout: "",
         stderr: "",
       });
@@ -376,7 +393,10 @@ describe("core-tmux", () => {
       await attachToSession(testSessionName);
 
       // Assert
-      expect(mockExecAsync).toHaveBeenCalledWith(`tmux attach-session -t "${testSessionName}"`);
+      expect(mockExeca).toHaveBeenCalledWith("tmux", ["attach-session", "-t", testSessionName], {
+        env: undefined,
+        timeout: 30000,
+      });
     });
 
     it("should attach to session in read-only mode", async () => {
@@ -384,7 +404,11 @@ describe("core-tmux", () => {
       await attachToSession(testSessionName, { readOnly: true });
 
       // Assert
-      expect(mockExecAsync).toHaveBeenCalledWith(`tmux attach-session -t "${testSessionName}" -r`);
+      expect(mockExeca).toHaveBeenCalledWith(
+        "tmux",
+        ["attach-session", "-t", testSessionName, "-r"],
+        { env: undefined, timeout: 30000 },
+      );
     });
 
     it("should attach to specific window", async () => {
@@ -392,8 +416,10 @@ describe("core-tmux", () => {
       await attachToSession(testSessionName, { targetWindow: "dev" });
 
       // Assert
-      expect(mockExecAsync).toHaveBeenCalledWith(
-        `tmux attach-session -t "${testSessionName}" -c "dev"`,
+      expect(mockExeca).toHaveBeenCalledWith(
+        "tmux",
+        ["attach-session", "-t", testSessionName, "-c", "dev"],
+        { env: undefined, timeout: 30000 },
       );
     });
 
@@ -407,14 +433,14 @@ describe("core-tmux", () => {
 
     it("should handle attach failure", async () => {
       // Arrange
-      mockExecAsync.mockReset();
+      mockExeca.mockReset();
       // Mock session exists
-      mockExecAsync.mockResolvedValueOnce({
+      mockExeca.mockResolvedValueOnce({
         stdout: `${testSessionName}:1640000000:1:/test/working/dir:$1234\n`,
         stderr: "",
       });
       // Mock attach failure
-      mockExecAsync.mockRejectedValueOnce(new Error("attach failed"));
+      mockExeca.mockRejectedValueOnce(new Error("attach failed"));
 
       // Act & Assert
       await expect(attachToSession(testSessionName)).rejects.toThrow("Failed to attach");
@@ -424,7 +450,7 @@ describe("core-tmux", () => {
   describe("killSession (TDD Phase 2)", () => {
     beforeEach(() => {
       // Mock getSessionInfo - session exists
-      mockExecAsync.mockResolvedValueOnce({
+      mockExeca.mockResolvedValueOnce({
         stdout: `${testSessionName}:1640000000:1:/test/working/dir:$1234\n`,
         stderr: "",
       });
@@ -432,7 +458,7 @@ describe("core-tmux", () => {
 
     it("should kill session with force option", async () => {
       // Arrange
-      mockExecAsync.mockResolvedValueOnce({
+      mockExeca.mockResolvedValueOnce({
         stdout: "",
         stderr: "",
       });
@@ -441,22 +467,27 @@ describe("core-tmux", () => {
       await killSession(testSessionName, { force: true });
 
       // Assert
-      expect(mockExecAsync).toHaveBeenCalledWith(`tmux kill-session -t "${testSessionName}"`);
+      expect(mockExeca).toHaveBeenCalledWith("tmux", ["kill-session", "-t", testSessionName], {
+        env: undefined,
+        timeout: 30000,
+      });
     });
 
     it("should attempt graceful shutdown first", async () => {
       // Arrange
       // Mock graceful exit command
-      mockExecAsync.mockResolvedValueOnce({ stdout: "", stderr: "" });
+      mockExeca.mockResolvedValueOnce({ stdout: "", stderr: "" });
       // Mock session check fails (session is gone)
-      mockExecAsync.mockRejectedValueOnce(new Error("session not found"));
+      mockExeca.mockRejectedValueOnce(new Error("session not found"));
 
       // Act
       await killSession(testSessionName);
 
       // Assert
-      expect(mockExecAsync).toHaveBeenCalledWith(
-        `tmux send-keys -t "${testSessionName}" "exit" Enter`,
+      expect(mockExeca).toHaveBeenCalledWith(
+        "tmux",
+        ["send-keys", "-t", testSessionName, "exit", "Enter"],
+        { env: undefined, timeout: 30000 },
       );
     });
 
@@ -465,47 +496,50 @@ describe("core-tmux", () => {
       const gracefulTimeout = 1; // 1 second for faster test
 
       // Mock graceful exit command
-      mockExecAsync.mockResolvedValueOnce({ stdout: "", stderr: "" });
+      mockExeca.mockResolvedValueOnce({ stdout: "", stderr: "" });
 
       // Mock session still exists during grace period
-      mockExecAsync.mockResolvedValueOnce({
+      mockExeca.mockResolvedValueOnce({
         stdout: `${testSessionName}:1640000000:1:/test/working/dir:$1234\n`,
         stderr: "",
       });
 
       // Mock force kill
-      mockExecAsync.mockResolvedValueOnce({ stdout: "", stderr: "" });
+      mockExeca.mockResolvedValueOnce({ stdout: "", stderr: "" });
 
       // Act
       await killSession(testSessionName, { gracefulTimeout });
 
       // Assert
-      expect(mockExecAsync).toHaveBeenCalledWith(`tmux kill-session -t "${testSessionName}"`);
+      expect(mockExeca).toHaveBeenCalledWith("tmux", ["kill-session", "-t", testSessionName], {
+        env: undefined,
+        timeout: 30000,
+      });
     });
 
     it("should handle session not found (no-op)", async () => {
       // Arrange
-      mockExecAsync.mockReset();
-      mockExecAsync.mockRejectedValueOnce(new Error("Session 'test-session' not found"));
+      mockExeca.mockReset();
+      mockExeca.mockRejectedValueOnce(new Error("Session 'test-session' not found"));
 
       // Act
       await killSession(testSessionName);
 
       // Assert - should not throw and not call kill command
-      expect(mockExecAsync).toHaveBeenCalledTimes(1); // Only the getSessionInfo call
+      expect(mockExeca).toHaveBeenCalledTimes(1); // Only the getSessionInfo call
     });
   });
 
   describe("listSessions (TDD Phase 3)", () => {
     it("should list all sessions", async () => {
       // Arrange
-      mockExecAsync.mockResolvedValueOnce({
+      mockExeca.mockResolvedValueOnce({
         stdout: "session1:1640000000:2:$1234\nsession2:1640000001:1:$1235\n",
         stderr: "",
       });
 
       // Mock getSessionInfo for each session
-      mockExecAsync
+      mockExeca
         .mockResolvedValueOnce({
           stdout: "session1:1640000000:2:/path1:$1234\n",
           stderr: "",
@@ -526,14 +560,14 @@ describe("core-tmux", () => {
 
     it("should filter sessions by pattern", async () => {
       // Arrange
-      mockExecAsync.mockResolvedValueOnce({
+      mockExeca.mockResolvedValueOnce({
         stdout:
           "swarm-task-1:1640000000:1:$1234\nother-session:1640000001:1:$1235\nswarm-task-2:1640000002:1:$1236\n",
         stderr: "",
       });
 
       // Mock getSessionInfo for swarm sessions only
-      mockExecAsync
+      mockExeca
         .mockResolvedValueOnce({
           stdout: "swarm-task-1:1640000000:1:/path1:$1234\n",
           stderr: "",
@@ -554,7 +588,7 @@ describe("core-tmux", () => {
 
     it("should handle no tmux server running", async () => {
       // Arrange
-      mockExecAsync.mockRejectedValueOnce(new Error("no server running"));
+      mockExeca.mockRejectedValueOnce(new Error("no server running"));
 
       // Act
       const sessions = await listSessions();
@@ -565,7 +599,7 @@ describe("core-tmux", () => {
 
     it("should handle list command failure", async () => {
       // Arrange
-      mockExecAsync.mockRejectedValueOnce(new Error("command failed"));
+      mockExeca.mockRejectedValueOnce(new Error("command failed"));
 
       // Act & Assert
       await expect(listSessions()).rejects.toThrow("Failed to list tmux sessions");
@@ -575,7 +609,7 @@ describe("core-tmux", () => {
   describe("getSessionInfo (TDD Phase 3)", () => {
     it("should get session information", async () => {
       // Arrange
-      mockExecAsync.mockResolvedValueOnce({
+      mockExeca.mockResolvedValueOnce({
         stdout: `${testSessionName}:1640000000:3:/test/path:$1234\n`,
         stderr: "",
       });
@@ -594,7 +628,7 @@ describe("core-tmux", () => {
 
     it("should handle session not found", async () => {
       // Arrange
-      mockExecAsync.mockRejectedValueOnce(new Error("session not found"));
+      mockExeca.mockRejectedValueOnce(new Error("session not found"));
 
       // Act & Assert
       await expect(getSessionInfo("nonexistent")).rejects.toThrow("not found");
@@ -610,37 +644,37 @@ describe("core-tmux", () => {
     it("should launch Claude with prompt", async () => {
       // Arrange
       // Mock getSessionInfo - session exists and is active (called by launchClaudeInSession)
-      mockExecAsync.mockResolvedValueOnce({
+      mockExeca.mockResolvedValueOnce({
         stdout: `${testSessionName}:1640000000:1:/test/working/dir:$1234\n`,
         stderr: "",
       });
 
       // Mock which claude command
-      mockExecAsync.mockResolvedValueOnce({
+      mockExeca.mockResolvedValueOnce({
         stdout: "/usr/local/bin/claude\n",
         stderr: "",
       });
 
       // Mock getSessionInfo again (called by launchProcessInSession)
-      mockExecAsync.mockResolvedValueOnce({
+      mockExeca.mockResolvedValueOnce({
         stdout: `${testSessionName}:1640000000:1:/test/working/dir:$1234\n`,
         stderr: "",
       });
 
       // Mock new window creation
-      mockExecAsync.mockResolvedValueOnce({
+      mockExeca.mockResolvedValueOnce({
         stdout: "",
         stderr: "",
       });
 
       // Mock send claude command
-      mockExecAsync.mockResolvedValueOnce({
+      mockExeca.mockResolvedValueOnce({
         stdout: "",
         stderr: "",
       });
 
       // Mock send prompt (after 2 second delay)
-      mockExecAsync.mockResolvedValueOnce({
+      mockExeca.mockResolvedValueOnce({
         stdout: "",
         stderr: "",
       });
@@ -649,25 +683,38 @@ describe("core-tmux", () => {
       await launchClaudeInSession(testSessionName, claudeOptions);
 
       // Assert
-      expect(mockExecAsync).toHaveBeenCalledWith("which claude");
-      expect(mockExecAsync).toHaveBeenCalledWith(
-        `tmux new-window -t "${testSessionName}" -n "claude"`,
+      expect(mockExeca).toHaveBeenCalledWith("which", ["claude"], {
+        env: undefined,
+        timeout: 30000,
+      });
+      expect(mockExeca).toHaveBeenCalledWith(
+        "tmux",
+        ["new-window", "-t", testSessionName, "-n", "claude"],
+        { env: undefined, timeout: 30000 },
       );
-      expect(mockExecAsync).toHaveBeenCalledWith(
-        `tmux send-keys -t "${testSessionName}:claude" "claude --dangerously-skip-permissions" Enter`,
+      expect(mockExeca).toHaveBeenCalledWith(
+        "tmux",
+        [
+          "send-keys",
+          "-t",
+          `${testSessionName}:claude`,
+          "claude --dangerously-skip-permissions",
+          "Enter",
+        ],
+        { env: undefined, timeout: 30000 },
       );
     });
 
     it("should handle Claude not available", async () => {
       // Arrange
-      mockExecAsync.mockReset();
+      mockExeca.mockReset();
       // Mock session exists
-      mockExecAsync.mockResolvedValueOnce({
+      mockExeca.mockResolvedValueOnce({
         stdout: `${testSessionName}:1640000000:1:/test/working/dir:$1234\n`,
         stderr: "",
       });
       // Mock which claude fails
-      mockExecAsync.mockRejectedValueOnce(new Error("command not found"));
+      mockExeca.mockRejectedValueOnce(new Error("command not found"));
 
       // Act & Assert
       await expect(launchClaudeInSession(testSessionName, claudeOptions)).rejects.toThrow(
@@ -678,31 +725,31 @@ describe("core-tmux", () => {
     it("should launch Claude without auto-starting prompt", async () => {
       // Arrange
       // Mock getSessionInfo - session exists and is active (called by launchClaudeInSession)
-      mockExecAsync.mockResolvedValueOnce({
+      mockExeca.mockResolvedValueOnce({
         stdout: `${testSessionName}:1640000000:1:/test/working/dir:$1234\n`,
         stderr: "",
       });
 
       // Mock which claude command
-      mockExecAsync.mockResolvedValueOnce({
+      mockExeca.mockResolvedValueOnce({
         stdout: "/usr/local/bin/claude\n",
         stderr: "",
       });
 
       // Mock getSessionInfo again (called by launchProcessInSession)
-      mockExecAsync.mockResolvedValueOnce({
+      mockExeca.mockResolvedValueOnce({
         stdout: `${testSessionName}:1640000000:1:/test/working/dir:$1234\n`,
         stderr: "",
       });
 
       // Mock new window creation
-      mockExecAsync.mockResolvedValueOnce({
+      mockExeca.mockResolvedValueOnce({
         stdout: "",
         stderr: "",
       });
 
       // Mock send claude command
-      mockExecAsync.mockResolvedValueOnce({
+      mockExeca.mockResolvedValueOnce({
         stdout: "",
         stderr: "",
       });
@@ -715,28 +762,28 @@ describe("core-tmux", () => {
 
       // Assert
       // Should not send the prompt
-      expect(mockExecAsync).not.toHaveBeenCalledWith(
-        expect.stringContaining(
-          `tmux send-keys -t "${testSessionName}:claude" "Help me with this task"`,
-        ),
+      expect(mockExeca).not.toHaveBeenCalledWith(
+        "tmux",
+        ["send-keys", "-t", `${testSessionName}:claude`, "Help me with this task", "Enter"],
+        { env: undefined, timeout: 30000 },
       );
     });
 
     it("should handle launch failure", async () => {
       // Arrange
-      mockExecAsync.mockReset();
+      mockExeca.mockReset();
       // Mock session exists
-      mockExecAsync.mockResolvedValueOnce({
+      mockExeca.mockResolvedValueOnce({
         stdout: `${testSessionName}:1640000000:1:/test/working/dir:$1234\n`,
         stderr: "",
       });
       // Mock claude available
-      mockExecAsync.mockResolvedValueOnce({
+      mockExeca.mockResolvedValueOnce({
         stdout: "/usr/local/bin/claude\n",
         stderr: "",
       });
       // Mock window creation fails
-      mockExecAsync.mockRejectedValueOnce(new Error("window creation failed"));
+      mockExeca.mockRejectedValueOnce(new Error("window creation failed"));
 
       // Act & Assert
       await expect(launchClaudeInSession(testSessionName, claudeOptions)).rejects.toThrow(
@@ -750,14 +797,14 @@ describe("core-tmux", () => {
       // This tests the internal matchesPattern function through listSessions
 
       // Arrange
-      mockExecAsync.mockResolvedValueOnce({
+      mockExeca.mockResolvedValueOnce({
         stdout:
           "swarm-task-1:1640000000:1:$1234\nother-session:1640000001:1:$1235\nswarm-review-2:1640000002:1:$1236\n",
         stderr: "",
       });
 
       // Mock getSessionInfo calls
-      mockExecAsync
+      mockExeca
         .mockResolvedValueOnce({
           stdout: "swarm-task-1:1640000000:1:/path1:$1234\n",
           stderr: "",
@@ -773,6 +820,105 @@ describe("core-tmux", () => {
       // Assert
       expect(sessions).toHaveLength(2);
       expect(sessions.map((s) => s.name)).toEqual(["swarm-task-1", "swarm-review-2"]);
+    });
+  });
+
+  describe("Security Tests (Command Injection Prevention)", () => {
+    it("should prevent command injection in session names", async () => {
+      // Arrange - malicious session name
+      const maliciousName = 'test"; rm -rf /; echo "';
+
+      // Act & Assert
+      await expect(
+        createTmuxSession({
+          name: maliciousName,
+          workingDirectory: "/tmp",
+        }),
+      ).rejects.toThrow("Session name contains invalid characters");
+    });
+
+    it("should prevent command injection in working directories", async () => {
+      // Arrange - malicious working directory
+      const maliciousPath = '/tmp; rm -rf /; echo "pwned';
+
+      // Act & Assert
+      await expect(
+        createTmuxSession({
+          name: "test-session",
+          workingDirectory: maliciousPath,
+        }),
+      ).rejects.toThrow("Working directory contains dangerous pattern");
+    });
+
+    it("should prevent command injection in environment variables", async () => {
+      // Arrange - malicious environment variable
+      const maliciousValue = 'value"; rm -rf /; echo "';
+
+      // Act & Assert - should fail validation before reaching tmux
+      await expect(
+        createTmuxSession({
+          name: "test-session",
+          workingDirectory: "/tmp",
+          environment: {
+            TEST_VAR: maliciousValue,
+          },
+        }),
+      ).rejects.toThrow("Environment variable value contains dangerous pattern");
+    });
+
+    it("should prevent command injection in process commands", async () => {
+      // Arrange - the validation happens before getSessionInfo is called
+      const maliciousCommand = 'echo "test"; rm -rf /; echo "';
+
+      // Act & Assert - should fail argument validation immediately
+      await expect(
+        launchProcessInSession("test-session", {
+          command: "echo",
+          args: [maliciousCommand],
+        }),
+      ).rejects.toThrow("Command argument contains dangerous pattern");
+    });
+
+    it("should sanitize session names to safe characters", async () => {
+      // Arrange - session name with spaces and special chars
+      const unsafeName = "my session with spaces & symbols!";
+
+      // Act & Assert
+      await expect(
+        createTmuxSession({
+          name: unsafeName,
+          workingDirectory: "/tmp",
+        }),
+      ).rejects.toThrow("Session name contains invalid characters");
+    });
+
+    it("should reject relative paths in working directories", async () => {
+      // Arrange - relative path
+      const relativePath = "../../../etc";
+
+      // Act & Assert
+      await expect(
+        createTmuxSession({
+          name: "test-session",
+          workingDirectory: relativePath,
+        }),
+      ).rejects.toThrow("Working directory must be an absolute path");
+    });
+
+    it("should validate environment variable keys", async () => {
+      // Arrange - invalid environment variable key
+      const invalidKey = "123_INVALID_KEY";
+
+      // Act & Assert
+      await expect(
+        createTmuxSession({
+          name: "test-session",
+          workingDirectory: "/tmp",
+          environment: {
+            [invalidKey]: "value",
+          },
+        }),
+      ).rejects.toThrow("Invalid environment variable key");
     });
   });
 });
