@@ -1,11 +1,10 @@
 import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import { Card, CardContent } from '../ui/card';
 import { Button } from '../ui/button';
-import { Badge } from '../ui/badge';
 import { CreateInstanceForm } from './CreateInstanceForm';
 import { InstanceCard } from './InstanceCard';
 import { MOCK_INSTANCES } from '../../types/instance';
-import type { Instance } from '@/types/instance';
+// import type { Instance } from '@/types/instance';
 
 interface DashboardProps {
   filter?: 'active' | 'inactive' | 'all';

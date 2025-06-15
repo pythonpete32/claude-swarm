@@ -60,7 +60,7 @@ app.post('/api/instances', async (c) => {
   }, 201);
 });
 
-const port = process.env.PORT || 3001;
+const port = process.env.PORT || 42070;
 
 // Create HTTP server
 const server = createServer();

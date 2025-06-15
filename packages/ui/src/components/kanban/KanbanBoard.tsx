@@ -8,9 +8,7 @@ import {
   Settings, 
   Search, 
   Filter,
-  User,
   Calendar,
-  GitBranch,
   Play,
   Square,
   Plus

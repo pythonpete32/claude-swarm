@@ -1,0 +1,42 @@
+# Agent Types
+
+*Understanding the three core agent types in Claude Codex*
+
+## Overview
+
+Claude Codex operates with three specialized agent types, each optimized for different aspects of the software development lifecycle.
+
+## The Three Agent Types
+
+### 🧠 [Planning Agents](planning-agents.md)
+**Role**: Architectural design and project coordination
+- Break down complex projects into manageable issues
+- Coordinate dependencies and work distribution
+- Engage in design discussions and architectural planning
+
+### 👨‍💻 [Coding Agents](coding-agents.md)  
+**Role**: Implementation and development
+- Transform GitHub issues into working code
+- Focus on high-quality implementation within defined scope
+- Operate in isolated worktree environments
+
+### 🔍 [Review Agents](review-agents.md)
+**Role**: Quality assurance and validation
+- Perform thorough code review and quality checks
+- Make binary pass/fail decisions with detailed feedback
+- Coordinate between local review and GitHub PR processes
+
+## Agent Characteristics
+
+### Stateless Design
+*Agents don't maintain context across sessions*
+
+### Issue-Focused Work
+*Each agent works on specific GitHub issues*
+
+### Isolated Environments
+*Agents operate in separate worktrees for clean separation*
+
+## Agent Coordination
+
+*How the three agent types work together to complete development workflows*

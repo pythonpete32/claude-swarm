@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash"
+    ]
+  },
+  "enabledMcpjsonServers": [
+    "puppeteer",
+    "context7",
+    "mcp_excalidraw"
+  ]
+}

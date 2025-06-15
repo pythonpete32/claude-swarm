@@ -1,0 +1,108 @@
+# Common Issues
+
+*Solutions for frequently encountered problems*
+
+## Installation Issues
+
+### Claude Swarm Won't Start
+**Symptoms**: Error messages during startup or initialization
+
+**Common Causes**:
+- Missing prerequisites (Node.js, tmux, Git)
+- Invalid GitHub token configuration
+- Claude API access issues
+- Port conflicts
+
+**Solutions**:
+- Verify all prerequisites are installed and updated
+- Check GitHub token permissions and validity
+- Validate Claude API configuration
+- Check for port conflicts (default: 3001, 3002)
+
+### Dependency Installation Failures
+**Symptoms**: npm/bun install errors
+
+**Solutions**:
+- Clear package manager cache
+- Try alternative installation method
+- Check Node.js version compatibility
+
+## Agent Issues
+
+### Agents Not Responding
+**Symptoms**: Agents appear stuck or unresponsive
+
+**Common Causes**:
+- Claude API rate limiting
+- Network connectivity issues
+- Insufficient system resources
+- Invalid project configuration
+
+**Solutions**:
+- Check Claude API usage and limits
+- Verify internet connectivity
+- Monitor system resource usage
+- Validate CLAUDE.md configuration
+
+### Agent Work Quality Issues
+**Symptoms**: Poor code quality or incorrect implementations
+
+**Solutions**:
+- Improve issue descriptions and requirements
+- Use more specific system prompts
+- Implement better review criteria
+- Check project context and documentation
+
+## GitHub Integration
+
+### Authentication Failures
+**Symptoms**: GitHub API errors or permission denials
+
+**Solutions**:
+- Regenerate GitHub personal access token
+- Verify token scope permissions
+- Check repository access rights
+- Validate organization permissions
+
+### Sync Issues
+**Symptoms**: GitHub state not reflecting local changes
+
+**Solutions**:
+- Force sync with GitHub API
+- Check network connectivity
+- Verify GitHub webhook configuration
+- Review API rate limit status
+
+## Terminal and UI Issues
+
+### Terminal Streaming Problems
+**Symptoms**: Terminal not displaying or interactive
+
+**Solutions**:
+- Check WebSocket connection
+- Verify tmux session exists
+- Restart terminal streaming service
+- Check browser console for errors
+
+### UI Performance Issues
+**Symptoms**: Slow or unresponsive web interface
+
+**Solutions**:
+- Clear browser cache
+- Check system resource usage
+- Restart Claude Swarm server
+- Update to latest version
+
+## Getting Additional Help
+
+### Debug Mode
+*How to enable verbose logging for troubleshooting*
+
+### Log Analysis
+*Understanding and interpreting log messages*
+
+### Community Support
+*Where to get help from the community*
+
+### Reporting Bugs
+*How to effectively report issues for resolution*

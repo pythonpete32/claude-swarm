@@ -1,203 +1,84 @@
----
-layout: landing
----
+# Claude Codex
 
-# Claude Swarm
+*Local AI Agent Orchestration Platform for Software Development*
 
-A **multi-agent development environment** that revolutionizes how you manage git worktrees, tmux sessions, and development workflows.
+## What is Claude Codex?
 
-:::tip[🚀 Ready to get started?]
-Jump into our [Quick Start Guide](/getting-started) to set up Claude Swarm in minutes.
-:::
+Claude Codex is a revolutionary platform that transforms how developers work with AI. Instead of using AI as a coding assistant, Claude Codex enables you to **orchestrate teams of AI agents** to work on your software projects.
 
-## Why Claude Swarm?
+> **Key Insight**: We're building software for humans to manage AI development teams, not just another AI coding assistant.
 
-Modern development requires juggling multiple features, bug fixes, and experiments simultaneously. Claude Swarm creates **isolated development environments** that keep your work organized and your main branch clean.
+## The Paradigm Shift
 
-### 🎯 Key Features
+Traditional development has developers writing code line by line. Claude Codex transforms developers into **orchestrators** of AI agent teams—essentially functioning as CTOs of their own virtual development companies.
 
-- **🌳 Git Worktree Management**: Create and manage isolated development environments
-- **🖥️ Tmux Integration**: Seamlessly handle terminal sessions with context switching
-- **🔗 GitHub Integration**: Connect directly with GitHub issues and repositories  
-- **🎨 Web UI**: Modern terminal interface for visual workflow management
-- **🔧 Library-First Design**: Extensible core modules for custom integrations
-- **🤖 Multi-Agent Support**: Run multiple Claude instances with proper isolation
+### From Code Writer to Team Leader
 
-### 🏗️ Clean Architecture
+- **Before**: Manual coding, limited parallel work, human implementation bottleneck
+- **After**: Agent orchestration, true parallel development, strategic focus
 
-Claude Swarm follows a proven 4-layer architecture pattern:
+## Key Features
 
-```mermaid
-graph LR
-    A[commands/] --> B[workflows/] 
-    B --> C[core/] 
-    C --> D[shared/]
-    
-    A -.-> |"CLI entry points"| A
-    B -.-> |"Orchestrate operations"| B
-    C -.-> |"Reusable building blocks"| C
-    D -.-> |"Common utilities"| D
-```
+- **Multi-Agent Coordination**: Deploy specialized Planning, Coding, and Review agents
+- **GitHub-Native Workflows**: All coordination happens through standard GitHub primitives
+- **Local Agent Orchestration**: Full control and privacy on your local machine
+- **Terminal Integration**: Real-time terminal streaming and interaction
+- **Project Management**: Visual dashboard for managing multiple AI development teams
 
-- **commands/**: CLI entry points that provide the user interface
-- **workflows/**: Orchestrate multiple core operations into cohesive processes
-- **core/**: Reusable building blocks (worktree, git, github, tmux, claude, files)
-- **shared/**: Common utilities (types, errors, config, validation)
+## Three Core Agent Types
 
-## Quick Example
+1. **🧠 Planning Agents**: Architectural design and project coordination
+2. **👨‍💻 Coding Agents**: Implementation and development work  
+3. **🔍 Review Agents**: Quality assurance and validation
+
+## Quick Start
 
 ```bash
-# Set up a new project workspace
-claude-swarm setup my-project
+# Install Claude Codex
+npm install -g claude-codex
 
-# Start working on a GitHub issue
-claude-swarm work-on-task --issue 123
+# Initialize a new project
+claude-codex init my-project
 
-# Clean up when done
-claude-swarm cleanup --worktree feature-123
+# Start the web interface
+claude-codex start
 ```
 
-:::info[Library-First Philosophy]
-Every component in Claude Swarm is designed as a **reusable library**. Whether you're building custom workflows or integrating with existing tools, our APIs provide the flexibility you need.
-:::
+## Architecture Overview
 
-## What's Next?
+Claude Codex operates on a **4-layer architecture**:
+- **Commands**: CLI and UI entry points
+- **Workflows**: Orchestration of multi-agent operations
+- **Core**: Reusable building blocks (git, worktree, github, tmux, claude, files)
+- **Shared**: Common utilities (types, errors, config, validation)
 
-<div style={{
-  display: 'grid',
-  gridTemplateColumns: 'repeat(2, 1fr)',
-  gap: 'var(--vocs-space_16)',
-  marginTop: 'var(--vocs-space_32)'
-}}>
-  <div style={{
-    border: '1px solid var(--vocs-color_border)',
-    borderRadius: 'var(--vocs-borderRadius_8)',
-    padding: 'var(--vocs-space_16)',
-    backgroundColor: 'var(--vocs-color_background2)',
-    transition: 'all 0.2s ease',
-  }}>
-    <h3 style={{
-      margin: '0 0 var(--vocs-space_8) 0',
-      fontSize: 'var(--vocs-fontSize_18)',
-      fontWeight: 'var(--vocs-fontWeight_semibold)',
-      color: 'var(--vocs-color_heading)'
-    }}>
-      📚 Learn the Basics
-    </h3>
-    <p style={{
-      margin: '0 0 var(--vocs-space_12) 0',
-      fontSize: 'var(--vocs-fontSize_14)',
-      color: 'var(--vocs-color_text2)',
-      lineHeight: 'var(--vocs-lineHeight_paragraph)'
-    }}>
-      Understand core concepts and architecture
-    </p>
-    <a href="/concepts/architecture" style={{
-      color: 'var(--vocs-color_textAccent)',
-      textDecoration: 'none',
-      fontSize: 'var(--vocs-fontSize_14)',
-      fontWeight: 'var(--vocs-fontWeight_medium)'
-    }}>
-      Core Concepts →
-    </a>
-  </div>
+## Why Local Development?
 
-  <div style={{
-    border: '1px solid var(--vocs-color_border)',
-    borderRadius: 'var(--vocs-borderRadius_8)',
-    padding: 'var(--vocs-space_16)',
-    backgroundColor: 'var(--vocs-color_background2)',
-    transition: 'all 0.2s ease',
-  }}>
-    <h3 style={{
-      margin: '0 0 var(--vocs-space_8) 0',
-      fontSize: 'var(--vocs-fontSize_18)',
-      fontWeight: 'var(--vocs-fontWeight_semibold)',
-      color: 'var(--vocs-color_heading)'
-    }}>
-      ⚡ Quick Start
-    </h3>
-    <p style={{
-      margin: '0 0 var(--vocs-space_12) 0',
-      fontSize: 'var(--vocs-fontSize_14)',
-      color: 'var(--vocs-color_text2)',
-      lineHeight: 'var(--vocs-lineHeight_paragraph)'
-    }}>
-      Get up and running in minutes
-    </p>
-    <a href="/getting-started" style={{
-      color: 'var(--vocs-color_textAccent)',
-      textDecoration: 'none',
-      fontSize: 'var(--vocs-fontSize_14)',
-      fontWeight: 'var(--vocs-fontWeight_medium)'
-    }}>
-      Quick Start →
-    </a>
-  </div>
+- **Privacy**: Code never leaves your environment
+- **Performance**: No network latency for agent operations
+- **Control**: Full control over agent configurations
+- **GitHub Integration**: Deep integration with GitHub workflow primitives
 
-  <div style={{
-    border: '1px solid var(--vocs-color_border)',
-    borderRadius: 'var(--vocs-borderRadius_8)',
-    padding: 'var(--vocs-space_16)',
-    backgroundColor: 'var(--vocs-color_background2)',
-    transition: 'all 0.2s ease',
-  }}>
-    <h3 style={{
-      margin: '0 0 var(--vocs-space_8) 0',
-      fontSize: 'var(--vocs-fontSize_18)',
-      fontWeight: 'var(--vocs-fontWeight_semibold)',
-      color: 'var(--vocs-color_heading)'
-    }}>
-      🔧 API Reference
-    </h3>
-    <p style={{
-      margin: '0 0 var(--vocs-space_12) 0',
-      fontSize: 'var(--vocs-fontSize_14)',
-      color: 'var(--vocs-color_text2)',
-      lineHeight: 'var(--vocs-lineHeight_paragraph)'
-    }}>
-      Detailed API documentation
-    </p>
-    <a href="/api/core" style={{
-      color: 'var(--vocs-color_textAccent)',
-      textDecoration: 'none',
-      fontSize: 'var(--vocs-fontSize_14)',
-      fontWeight: 'var(--vocs-fontWeight_medium)'
-    }}>
-      API Docs →
-    </a>
-  </div>
+## Getting Started
 
-  <div style={{
-    border: '1px solid var(--vocs-color_border)',
-    borderRadius: 'var(--vocs-borderRadius_8)',
-    padding: 'var(--vocs-space_16)',
-    backgroundColor: 'var(--vocs-color_background2)',
-    transition: 'all 0.2s ease',
-  }}>
-    <h3 style={{
-      margin: '0 0 var(--vocs-space_8) 0',
-      fontSize: 'var(--vocs-fontSize_18)',
-      fontWeight: 'var(--vocs-fontWeight_semibold)',
-      color: 'var(--vocs-color_heading)'
-    }}>
-      🎮 Try It Out
-    </h3>
-    <p style={{
-      margin: '0 0 var(--vocs-space_12) 0',
-      fontSize: 'var(--vocs-fontSize_14)',
-      color: 'var(--vocs-color_text2)',
-      lineHeight: 'var(--vocs-lineHeight_paragraph)'
-    }}>
-      Interactive playground and examples
-    </p>
-    <a href="/playground" style={{
-      color: 'var(--vocs-color_textAccent)',
-      textDecoration: 'none',
-      fontSize: 'var(--vocs-fontSize_14)',
-      fontWeight: 'var(--vocs-fontWeight_medium)'
-    }}>
-      Playground →
-    </a>
-  </div>
-</div>
+1. [Installation Guide](getting-started/installation.mdx)
+2. [Quick Start Tutorial](getting-started/quick-start.mdx)
+3. [What is Claude Codex?](getting-started/what-is-claude-codex.mdx)
+
+## Documentation Sections
+
+- **[User Guide](user-guide/README.mdx)**: Complete end-user documentation
+- **[Agent Types](agents/README.mdx)**: Understanding the three-agent system
+- **[Workflows](workflows/README.mdx)**: Development processes and coordination
+- **[Architecture](architecture/README.mdx)**: Technical system design
+- **[API Reference](api/README.mdx)**: Complete API documentation
+
+## Support
+
+- [Troubleshooting Guide](troubleshooting/common-issues.mdx)
+- [GitHub Issues](https://github.com/your-org/claude-codex/issues)
+- [Development Guide](development/README.mdx)
+
+---
+
+*Claude Codex represents a mental model shift for how software developers will work in an AI-augmented future—not as coders, but as orchestrators of intelligent development systems.*
