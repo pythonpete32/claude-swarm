@@ -2,6 +2,7 @@
 /worktrees/*
 node_modules/*
 **/dist/
+**/node_modules/
 coverage/*
 docs/*
 .DS_Store
@@ -9,3 +10,11 @@ docs/*
 Excalidraw.log
 excalidraw.log
 **/node_modules/.vite/vitest/**/results.json
+
+# Database runtime files (actual database instances - not schema migrations)
+*.db
+*.sqlite
+*.sqlite3
+*.db-wal
+*.db-shm
+claude-codex.db*

@@ -129,6 +129,22 @@ const claudeSession = await launchClaudeInteractive(options); // core-claude
 
 **Critical For**: Context management, file operations, project setup
 
+---
+
+### [**core-database**](./modules/core-database.md) 🗃️
+**Purpose**: Turso/libSQL database operations for state management and coordination
+
+**Key Functions**:
+- `initializeDatabase()` - Setup local or embedded replica connections
+- `createInstance()` - Create instance records with validation
+- `updateInstanceStatus()` - Update status with automatic event logging
+- `logMCPEvent()` - Track MCP tool executions for debugging
+- `createRelationship()` - Manage instance relationships and review cycles
+
+**Dependencies**: `@libsql/client`, `shared/types`, `shared/errors`, `shared/config`
+
+**Critical For**: Instance tracking, MCP coordination, agent state management
+
 ## Module Integration Patterns
 
 ### 1. **Repository Discovery Pattern**
@@ -193,6 +209,7 @@ interface SwarmConfig {
   tmux: TmuxConfig;                // core-tmux settings  
   claude: ClaudeConfig;            // core-claude settings
   github: GitHubConfig;            // core-github settings
+  database: DatabaseConfig;       // core-database settings
   logging: LoggingConfig;          // Cross-module logging
 }
 ```
@@ -225,10 +242,11 @@ Implement in this order:
 ### 2. **Core Module Implementation Order**
 1. **core-git** - Foundation for repository operations
 2. **core-files** - File system utilities  
-3. **core-worktree** - Builds on git and files
-4. **core-tmux** - Independent session management
-5. **core-github** - External API integration
-6. **core-claude** - Builds on tmux integration
+3. **core-database** - State management foundation
+4. **core-worktree** - Builds on git and files
+5. **core-tmux** - Independent session management
+6. **core-github** - External API integration
+7. **core-claude** - Builds on tmux integration
 
 ### 3. **Quality Gates**
 - All modules must pass TypeScript compilation
@@ -247,7 +265,9 @@ core-worktree ──┐
                 ├─── core-git ──┐
 core-github   ──┘              ├─── shared/*
                                 │
-core-files    ──────────────────┘
+core-files    ──────────────────┤
+                                │
+core-database ──────────────────┘
 ```
 
 ## Success Criteria

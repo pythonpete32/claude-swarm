@@ -1,0 +1,462 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<prompt>
+  <title>Implement Core Database Module with Drizzle ORM + libSQL</title>
+  
+  <context>
+    <description>
+      You are implementing the core database module for Claude Codex, a multi-agent development platform. 
+      This module provides local-first SQLite database operations using Drizzle ORM and libSQL for enhanced performance and type safety.
+    </description>
+    
+    <architecture_principles>
+      <principle>Local-first approach - no external dependencies by default</principle>
+      <principle>Full TypeScript type safety with Drizzle ORM</principle>
+      <principle>Dependency injection patterns following core module conventions</principle>
+      <principle>Comprehensive error handling with standardized error codes</principle>
+      <principle>100% unit and integration test coverage</principle>
+    </architecture_principles>
+    
+    <specification_reference>
+      <file>packages/docs/spec/modules/core-database.md</file>
+      <description>Complete specification with interfaces, functions, and examples</description>
+    </specification_reference>
+  </context>
+
+  <requirements>
+    <typescript_standards>
+      <rule>Zero `any` types allowed - all code must be fully typed</rule>
+      <rule>Use strict TypeScript configuration</rule>
+      <rule>Export all type definitions for external use</rule>
+      <rule>Implement proper generic constraints</rule>
+    </typescript_standards>
+    
+    <database_implementation>
+      <technology>Drizzle ORM with libSQL driver</technology>
+      <approach>Local SQLite file with enhanced libSQL features</approach>
+      <schema_management>Drizzle migrations and type-safe schema definitions</schema_management>
+      <performance>WAL mode, prepared statements, proper indexing</performance>
+    </database_implementation>
+    
+    <testing_requirements>
+      <unit_tests>
+        <coverage>100% function and branch coverage</coverage>
+        <strategy>In-memory SQLite databases for isolated testing</strategy>
+        <mocking>Mock external dependencies, NOT the database itself</mocking>
+        <framework>Vitest with extended matchers</framework>
+      </unit_tests>
+      
+      <integration_tests>
+        <strategy>Real SQLite file databases with proper cleanup</strategy>
+        <scenarios>Multi-connection concurrency, transaction handling, migration testing</scenarios>
+        <fixtures>Reusable test data and schema setup</fixtures>
+      </integration_tests>
+      
+      <database_testing_strategy>
+        <in_memory_unit>Use `:memory:` for lightning-fast unit tests</in_memory_unit>
+        <temp_file_integration>Use temporary files for integration tests</temp_file_integration>
+        <turso_forking>Optional: Use Turso database branching for cloud-based testing</turso_forking>
+        <cleanup>Automatic database cleanup after each test</cleanup>
+        <concurrency>Test concurrent access patterns</concurrency>
+      </database_testing_strategy>
+      
+      <advanced_testing_features>
+        <database_dumps>Create test data from production dumps using `turso db shell .dump`</database_dumps>
+        <database_branching>Use `turso db create test-db --from-db main-db` for fork-based testing</database_branching>
+        <point_in_time>Test with specific data states using `--timestamp` flag</point_in_time>
+        <real_world_data>Test against actual production schema and data patterns</real_world_data>
+      </advanced_testing_features>
+    </testing_requirements>
+  </requirements>
+
+  <implementation_tasks>
+    <task id="1" priority="high">
+      <name>Project Setup and Dependencies</name>
+      <details>
+        <subtask>Install required packages: drizzle-orm, @libsql/client, drizzle-kit</subtask>
+        <subtask>Install dev dependencies: vitest, @types/node</subtask>
+        <subtask>Create drizzle.config.ts for migration management</subtask>
+        <subtask>Set up TypeScript configuration with strict settings</subtask>
+      </details>
+    </task>
+
+    <task id="2" priority="high">
+      <name>Schema Definition and Types</name>
+      <details>
+        <subtask>Create src/db/schema.ts with complete Drizzle schema</subtask>
+        <subtask>Define all tables: instances, mcp_events, instance_relationships, github_issues, user_config</subtask>
+        <subtask>Add proper relations, indexes, and constraints</subtask>
+        <subtask>Export TypeScript types for all tables</subtask>
+        <subtask>Create comprehensive type definitions for all interfaces</subtask>
+      </details>
+      <code_example>
+        ```typescript
+        // Example schema structure
+        export const instancesTable = sqliteTable('instances', {
+          id: text('id').primaryKey(),
+          type: text('type', { enum: ['coding', 'review', 'planning'] }).notNull(),
+          status: text('status', { enum: [...] }).notNull(),
+          // ... other fields with proper types
+        }, (table) => ({
+          statusIdx: index('idx_instances_status').on(table.status),
+          lastActivityIdx: index('idx_instances_last_activity').on(table.last_activity),
+        }));
+        
+        export type Instance = typeof instancesTable.$inferSelect;
+        export type NewInstance = typeof instancesTable.$inferInsert;
+        ```
+      </code_example>
+    </task>
+
+    <task id="3" priority="high">
+      <name>Core Database Interface Implementation</name>
+      <details>
+        <subtask>Implement DatabaseInterface with all required methods</subtask>
+        <subtask>Create initializeDatabase function with proper configuration</subtask>
+        <subtask>Implement type-safe CRUD operations using Drizzle queries</subtask>
+        <subtask>Add proper connection management and error handling</subtask>
+        <subtask>Support both in-memory and file-based connections</subtask>
+      </details>
+      <code_example>
+        ```typescript
+        export async function initializeDatabase(config?: DatabaseConfig): Promise<DatabaseInterface> {
+          const dbConfig = { ...getDefaultDatabaseConfig(), ...config };
+          
+          const client = createClient({
+            url: dbConfig.local.file,
+            // Configure for local-first approach
+          });
+          
+          const db = drizzle(client, { 
+            schema: { instancesTable, mcpEventsTable, /* ... */ },
+            logger: dbConfig.drizzle.logger 
+          });
+          
+          // Run migrations if needed
+          if (dbConfig.local.autoMigrate) {
+            await runMigrations(db);
+          }
+          
+          return new SQLiteDatabase(db, dbConfig);
+        }
+        ```
+      </code_example>
+    </task>
+
+    <task id="4" priority="high">
+      <name>Migration System Implementation</name>
+      <details>
+        <subtask>Create migration infrastructure using Drizzle Kit</subtask>
+        <subtask>Implement runtime migration application</subtask>
+        <subtask>Add schema version tracking</subtask>
+        <subtask>Create initial migration with all tables</subtask>
+        <subtask>Test migration rollback capabilities</subtask>
+      </details>
+    </task>
+
+    <task id="5" priority="high">
+      <name>Comprehensive Unit Test Suite</name>
+      <details>
+        <subtask>Set up Vitest configuration with SQLite support</subtask>
+        <subtask>Create test utilities for in-memory database setup</subtask>
+        <subtask>Test all CRUD operations with type safety</subtask>
+        <subtask>Test error conditions and edge cases</subtask>
+        <subtask>Test migration system thoroughly</subtask>
+        <subtask>Achieve 100% code coverage</subtask>
+      </details>
+      <testing_strategy>
+        <in_memory_setup>
+          ```typescript
+          // Test setup using in-memory database
+          async function createTestDatabase(): Promise<DatabaseInterface> {
+            const client = createClient({ url: ':memory:' });
+            const db = drizzle(client, { schema });
+            await runMigrations(db);
+            return new SQLiteDatabase(db, testConfig);
+          }
+          
+          beforeEach(async () => {
+            testDb = await createTestDatabase();
+          });
+          ```
+        </in_memory_setup>
+        
+        <turso_fork_testing>
+          ```typescript
+          // Optional: Advanced testing with Turso database forking
+          async function createForkTestDatabase(): Promise<DatabaseInterface> {
+            // Create a test database branch from production data
+            const testDbName = `test-${Date.now()}`;
+            
+            // Fork from main database with real data
+            await exec(`turso db create ${testDbName} --from-db main-database`);
+            
+            const url = await exec(`turso db show --url ${testDbName}`);
+            const token = await exec(`turso db tokens create ${testDbName}`);
+            
+            const client = createClient({ url, authToken: token });
+            const db = drizzle(client, { schema });
+            
+            return {
+              db,
+              cleanup: () => exec(`turso db delete ${testDbName}`)
+            };
+          }
+          ```
+        </turso_fork_testing>
+        
+        <test_examples>
+          ```typescript
+          describe('Instance Management', () => {
+            it('should create instance with valid data', async () => {
+              const instance: NewInstance = {
+                id: 'work-123-a1',
+                type: 'coding',
+                status: 'started',
+                // ... complete valid data
+              };
+              
+              const result = await testDb.insert(instancesTable)
+                .values(instance)
+                .returning({ id: instancesTable.id });
+              
+              expect(result[0].id).toBe('work-123-a1');
+              
+              // Verify database state
+              const retrieved = await testDb.select()
+                .from(instancesTable)
+                .where(eq(instancesTable.id, 'work-123-a1'));
+              
+              expect(retrieved).toHaveLength(1);
+              expect(retrieved[0].type).toBe('coding');
+            });
+            
+            it('should reject invalid status transitions', async () => {
+              // Test error conditions
+            });
+          });
+          ```
+        </test_examples>
+      </testing_strategy>
+    </task>
+
+    <task id="6" priority="medium">
+      <name>Integration Test Suite</name>
+      <details>
+        <subtask>Create integration tests with temporary file databases</subtask>
+        <subtask>Test concurrent access scenarios</subtask>
+        <subtask>Test complex queries with joins and relations</subtask>
+        <subtask>Test transaction behavior and rollbacks</subtask>
+        <subtask>Test database cleanup and maintenance operations</subtask>
+        <subtask>Implement Turso database forking for advanced testing</subtask>
+      </details>
+      <integration_strategy>
+        ```typescript
+        describe('Database Integration Tests', () => {
+          let tempDbPath: string;
+          let testDb: DatabaseInterface;
+          
+          beforeEach(async () => {
+            tempDbPath = path.join(tmpdir(), `test-${Date.now()}.db`);
+            testDb = await initializeDatabase({
+              local: { file: `file:${tempDbPath}` }
+            });
+          });
+          
+          afterEach(async () => {
+            await testDb.disconnect();
+            await fs.unlink(tempDbPath).catch(() => {}); // Cleanup
+          });
+          
+          it('should handle concurrent instance creation', async () => {
+            // Test concurrent operations
+            const promises = Array.from({ length: 10 }, (_, i) => 
+              testDb.insert(instancesTable).values({
+                id: `work-${i}-a1`,
+                type: 'coding',
+                status: 'started',
+                // ... other required fields
+              })
+            );
+            
+            await expect(Promise.all(promises)).resolves.not.toThrow();
+          });
+        });
+        ```
+      </integration_strategy>
+      
+      <turso_integration_testing>
+        ```typescript
+        // Advanced integration testing with Turso forking
+        describe('Turso Fork Integration Tests', () => {
+          let forkDb: string;
+          let testDb: DatabaseInterface;
+          
+          beforeEach(async () => {
+            // Create database fork from production data
+            forkDb = `integration-test-${Date.now()}`;
+            await exec(`turso db create ${forkDb} --from-db production-db`);
+            
+            const dbUrl = await exec(`turso db show --url ${forkDb}`);
+            const authToken = await exec(`turso db tokens create ${forkDb}`);
+            
+            testDb = await initializeDatabase({
+              cloud: {
+                enabled: true,
+                syncUrl: dbUrl.trim(),
+                authToken: authToken.trim()
+              }
+            });
+          });
+          
+          afterEach(async () => {
+            await testDb.disconnect();
+            await exec(`turso db delete ${forkDb}`);
+          });
+          
+          it('should handle production-scale data operations', async () => {
+            // Test with real production data patterns
+            const instances = await testDb.select()
+              .from(instancesTable)
+              .limit(1000);
+            
+            expect(instances).toBeDefined();
+            // Test operations against realistic data volumes
+          });
+        });
+        ```
+      </turso_integration_testing>
+    </task>
+
+    <task id="7" priority="medium">
+      <name>Error Handling and Validation</name>
+      <details>
+        <subtask>Implement comprehensive error handling with specific error codes</subtask>
+        <subtask>Add input validation using Drizzle's type system</subtask>
+        <subtask>Create custom error classes extending core error patterns</subtask>
+        <subtask>Test all error conditions thoroughly</subtask>
+      </details>
+    </task>
+
+    <task id="8" priority="low">
+      <name>Performance Optimization and Documentation</name>
+      <details>
+        <subtask>Implement prepared statements for frequently used queries</subtask>
+        <subtask>Add query performance monitoring</subtask>
+        <subtask>Create comprehensive API documentation</subtask>
+        <subtask>Add usage examples and best practices</subtask>
+      </details>
+    </task>
+  </implementation_tasks>
+
+  <file_structure>
+    <structure>
+      ```
+      packages/core/src/core/
+      ├── database.ts              # Main database interface and functions
+      ├── db/
+      │   ├── schema.ts            # Drizzle schema definitions
+      │   ├── migrations/          # Generated migration files
+      │   └── migrate.ts           # Migration runner
+      └── __tests__/
+          ├── database.test.ts     # Unit tests
+          ├── database-integration.test.ts  # Integration tests
+          ├── migrations.test.ts   # Migration tests
+          └── fixtures/
+              ├── test-data.ts     # Test fixtures
+              └── test-utils.ts    # Test utilities
+      ```
+    </structure>
+  </file_structure>
+
+  <testing_infrastructure>
+    <vitest_config>
+      ```typescript
+      // vitest.config.ts
+      export default defineConfig({
+        test: {
+          environment: 'node',
+          globals: true,
+          coverage: {
+            provider: 'v8',
+            reporter: ['text', 'html'],
+            thresholds: {
+              functions: 100,
+              branches: 100,
+              lines: 100,
+              statements: 100
+            }
+          },
+          setupFiles: ['./src/__tests__/setup.ts']
+        }
+      });
+      ```
+    </vitest_config>
+    
+    <test_utilities>
+      ```typescript
+      // Test utilities for database setup
+      export async function createInMemoryTestDb(): Promise<DatabaseInterface> {
+        const client = createClient({ url: ':memory:' });
+        const db = drizzle(client, { schema: * as schema });
+        await migrate(db, { migrationsFolder: './src/db/migrations' });
+        return new SQLiteDatabase(db, getTestConfig());
+      }
+      
+      export function generateTestInstance(overrides?: Partial<NewInstance>): NewInstance {
+        return {
+          id: `test-${Date.now()}`,
+          type: 'coding',
+          status: 'started',
+          worktree_path: '/tmp/test',
+          branch_name: 'test-branch',
+          tmux_session: 'test-session',
+          agent_number: 1,
+          ...overrides
+        };
+      }
+      ```
+    </test_utilities>
+  </testing_infrastructure>
+
+  <quality_gates>
+    <gate name="type_safety">
+      <description>All code must compile with strict TypeScript settings</description>
+      <validation>Run `tsc --noEmit` without errors</validation>
+    </gate>
+    
+    <gate name="test_coverage">
+      <description>100% test coverage for all core functionality</description>
+      <validation>Run `npm run test:coverage` and verify 100% coverage</validation>
+    </gate>
+    
+    <gate name="integration_tests">
+      <description>All integration tests must pass</description>
+      <validation>Tests must work with real SQLite files and in-memory databases</validation>
+    </gate>
+    
+    <gate name="performance">
+      <description>Database operations must meet performance benchmarks</description>
+      <validation>Basic CRUD operations under 10ms in tests</validation>
+    </gate>
+  </quality_gates>
+
+  <completion_criteria>
+    <criteria>All TypeScript interfaces implemented with zero `any` types</criteria>
+    <criteria>Complete Drizzle schema with all tables, relations, and indexes</criteria>
+    <criteria>100% unit test coverage with in-memory SQLite testing</criteria>
+    <criteria>Comprehensive integration tests with file-based SQLite</criteria>
+    <criteria>Full migration system with rollback capabilities</criteria>
+    <criteria>Error handling with standardized error codes</criteria>
+    <criteria>Performance benchmarks met for all core operations</criteria>
+    <criteria>Documentation with usage examples</criteria>
+  </completion_criteria>
+
+  <deliverables>
+    <deliverable>Fully implemented database module in packages/core/src/core/database.ts</deliverable>
+    <deliverable>Complete Drizzle schema definitions</deliverable>
+    <deliverable>Comprehensive test suites (unit + integration)</deliverable>
+    <deliverable>Migration system with initial schema migration</deliverable>
+    <deliverable>Type definitions and exports</deliverable>
+    <deliverable>README with setup and usage instructions</deliverable>
+  </deliverables>
+</prompt>
