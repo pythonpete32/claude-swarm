@@ -5,4 +5,4 @@ dist/*
 coverage/*
 docs/*
 .DS_Store
-.env
+.envexcalidraw.log
