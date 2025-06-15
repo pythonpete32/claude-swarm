@@ -1,18 +1,12 @@
-import { useState } from 'react';
-import { Dashboard } from './components/dashboard/Dashboard';
-import { TerminalView } from './components/terminal/TerminalView';
-import { KanbanBoard } from './components/kanban/KanbanBoard';
-import { Button } from './components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from './components/ui/card';
-import { 
-  LayoutDashboard, 
-  Kanban, 
-  Settings as SettingsIcon,
-  Moon,
-  Sun
-} from 'lucide-react';
+import { Kanban, LayoutDashboard, Moon, Settings as SettingsIcon, Sun } from "lucide-react";
+import { useState } from "react";
+import { Dashboard } from "./components/dashboard/Dashboard";
+import { KanbanBoard } from "./components/kanban/KanbanBoard";
+import { TerminalView } from "./components/terminal/TerminalView";
+import { Button } from "./components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "./components/ui/card";
 
-type AppView = 'dashboard' | 'terminal' | 'kanban' | 'settings';
+type AppView = "dashboard" | "terminal" | "kanban" | "settings";
 
 interface TerminalViewState {
   instanceId: string;
@@ -20,7 +14,7 @@ interface TerminalViewState {
 }
 
 function App() {
-  const [currentView, setCurrentView] = useState<AppView>('dashboard');
+  const [currentView, setCurrentView] = useState<AppView>("dashboard");
   const [terminalState, setTerminalState] = useState<TerminalViewState | null>(null);
   const [isDarkMode, setIsDarkMode] = useState(false);
 
@@ -29,17 +23,17 @@ function App() {
       instanceId,
       sessionName: instanceId, // Mock: using instanceId as session name
     });
-    setCurrentView('terminal');
+    setCurrentView("terminal");
   };
 
   const handleBackToDashboard = () => {
-    setCurrentView('dashboard');
+    setCurrentView("dashboard");
     setTerminalState(null);
   };
 
   const toggleTheme = () => {
     setIsDarkMode(!isDarkMode);
-    document.documentElement.classList.toggle('dark');
+    document.documentElement.classList.toggle("dark");
   };
 
   const renderNavigation = () => (
@@ -48,27 +42,27 @@ function App() {
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center gap-1">
             <Button
-              variant={currentView === 'dashboard' ? 'default' : 'ghost'}
+              variant={currentView === "dashboard" ? "default" : "ghost"}
               size="sm"
-              onClick={() => setCurrentView('dashboard')}
+              onClick={() => setCurrentView("dashboard")}
               className="gap-2"
             >
               <LayoutDashboard className="h-4 w-4" />
               Dashboard
             </Button>
             <Button
-              variant={currentView === 'kanban' ? 'default' : 'ghost'}
+              variant={currentView === "kanban" ? "default" : "ghost"}
               size="sm"
-              onClick={() => setCurrentView('kanban')}
+              onClick={() => setCurrentView("kanban")}
               className="gap-2"
             >
               <Kanban className="h-4 w-4" />
               Kanban
             </Button>
             <Button
-              variant={currentView === 'settings' ? 'default' : 'ghost'}
+              variant={currentView === "settings" ? "default" : "ghost"}
               size="sm"
-              onClick={() => setCurrentView('settings')}
+              onClick={() => setCurrentView("settings")}
               className="gap-2"
             >
               <SettingsIcon className="h-4 w-4" />
@@ -77,11 +71,7 @@ function App() {
           </div>
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm" onClick={toggleTheme}>
-              {isDarkMode ? (
-                <Sun className="h-4 w-4" />
-              ) : (
-                <Moon className="h-4 w-4" />
-              )}
+              {isDarkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </Button>
           </div>
         </div>
@@ -95,7 +85,7 @@ function App() {
         <h1 className="text-3xl font-bold">Settings</h1>
         <p className="text-muted-foreground">Configure your Claude Codex preferences</p>
       </div>
-      
+
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
           <CardHeader>
@@ -104,17 +94,17 @@ function App() {
           <CardContent className="space-y-4">
             <div>
               <label className="text-sm font-medium">GitHub Token</label>
-              <input 
-                type="password" 
-                placeholder="ghp_xxxxxxxxxxxx" 
+              <input
+                type="password"
+                placeholder="ghp_xxxxxxxxxxxx"
                 className="w-full mt-1 px-3 py-2 border rounded-md"
               />
             </div>
             <div>
               <label className="text-sm font-medium">Default Repository</label>
-              <input 
-                type="text" 
-                placeholder="owner/repository" 
+              <input
+                type="text"
+                placeholder="owner/repository"
                 className="w-full mt-1 px-3 py-2 border rounded-md"
               />
             </div>
@@ -161,9 +151,9 @@ function App() {
             </div>
             <div>
               <label className="text-sm font-medium">Worktree Base Path</label>
-              <input 
-                type="text" 
-                placeholder="./worktrees" 
+              <input
+                type="text"
+                placeholder="./worktrees"
                 className="w-full mt-1 px-3 py-2 border rounded-md"
               />
             </div>
@@ -194,7 +184,7 @@ function App() {
   );
 
   const renderCurrentView = () => {
-    if (currentView === 'terminal' && terminalState) {
+    if (currentView === "terminal" && terminalState) {
       return (
         <TerminalView
           instanceId={terminalState.instanceId}
@@ -208,10 +198,10 @@ function App() {
       <>
         {renderNavigation()}
         <main className="flex-1">
-          {currentView === 'dashboard' && (
-            <Dashboard 
+          {currentView === "dashboard" && (
+            <Dashboard
               onInstanceAction={(action, instanceId) => {
-                if (action === 'view') {
+                if (action === "view") {
                   handleViewInstance(instanceId);
                 } else {
                   console.log(`Action ${action} on instance ${instanceId}`);
@@ -219,18 +209,16 @@ function App() {
               }}
             />
           )}
-          {currentView === 'kanban' && <KanbanBoard />}
-          {currentView === 'settings' && renderSettings()}
+          {currentView === "kanban" && <KanbanBoard />}
+          {currentView === "settings" && renderSettings()}
         </main>
       </>
     );
   };
 
   return (
-    <div className={`min-h-screen bg-background text-foreground ${isDarkMode ? 'dark' : ''}`}>
-      <div className="flex flex-col min-h-screen">
-        {renderCurrentView()}
-      </div>
+    <div className={`min-h-screen bg-background text-foreground ${isDarkMode ? "dark" : ""}`}>
+      <div className="flex flex-col min-h-screen">{renderCurrentView()}</div>
     </div>
   );
 }

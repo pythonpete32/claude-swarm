@@ -1,50 +1,49 @@
-import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
-import { Button } from '../ui/button';
-import { Textarea } from '../ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { Badge } from '../ui/badge';
-import { Rocket, GitBranch as GitBranchIcon, Bug } from 'lucide-react';
-import { MOCK_BRANCHES, MOCK_ISSUES } from '../../types/instance';
-import type { GitHubIssue, GitBranch } from '@/types/instance';
+import { Bug, GitBranch as GitBranchIcon, Rocket } from "lucide-react";
+import { useState } from "react";
+import { MOCK_BRANCHES, MOCK_ISSUES } from "../../types/instance";
+import { Badge } from "../ui/badge";
+import { Button } from "../ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
+import { Textarea } from "../ui/textarea";
 
 interface CreateInstanceFormProps {
   onInstanceCreated: (instanceId: string) => void;
 }
 
 export function CreateInstanceForm({ onInstanceCreated }: CreateInstanceFormProps) {
-  const [prompt, setPrompt] = useState('');
-  const [selectedBranch, setSelectedBranch] = useState<string>('main');
+  const [prompt, setPrompt] = useState("");
+  const [selectedBranch, setSelectedBranch] = useState<string>("main");
   const [selectedIssue, setSelectedIssue] = useState<number | null>(null);
   const [isCreating, setIsCreating] = useState(false);
 
-  const selectedIssueData = MOCK_ISSUES.find(issue => issue.number === selectedIssue);
+  const selectedIssueData = MOCK_ISSUES.find((issue) => issue.number === selectedIssue);
 
   const handleLaunch = async () => {
     if (!prompt.trim()) return;
-    
+
     setIsCreating(true);
-    
+
     // Mock creation delay
     setTimeout(() => {
-      const instanceId = selectedIssue 
+      const instanceId = selectedIssue
         ? `work-${selectedIssue}-a1`
         : `adhoc-a${Math.floor(Math.random() * 10) + 1}`;
-      
+
       onInstanceCreated(instanceId);
-      
+
       // Reset form
-      setPrompt('');
+      setPrompt("");
       setSelectedIssue(null);
       setIsCreating(false);
     }, 1500);
   };
 
   const getLabelBadgeColor = (label: string) => {
-    if (label.includes('bug') || label.includes('priority-high')) return 'destructive';
-    if (label.includes('feature') || label.includes('priority-medium')) return 'default';
-    if (label.includes('enhancement') || label.includes('priority-low')) return 'secondary';
-    return 'outline';
+    if (label.includes("bug") || label.includes("priority-high")) return "destructive";
+    if (label.includes("feature") || label.includes("priority-medium")) return "default";
+    if (label.includes("enhancement") || label.includes("priority-low")) return "secondary";
+    return "outline";
   };
 
   return (
@@ -85,7 +84,9 @@ export function CreateInstanceForm({ onInstanceCreated }: CreateInstanceFormProp
                     <div className="flex items-center gap-2">
                       <span>{branch.name}</span>
                       {branch.current && (
-                        <Badge variant="outline" className="text-xs">current</Badge>
+                        <Badge variant="outline" className="text-xs">
+                          current
+                        </Badge>
                       )}
                     </div>
                   </SelectItem>
@@ -100,9 +101,11 @@ export function CreateInstanceForm({ onInstanceCreated }: CreateInstanceFormProp
               <Bug className="h-3 w-3" />
               Issue (Optional)
             </label>
-            <Select 
-              value={selectedIssue?.toString() || 'none'} 
-              onValueChange={(value) => setSelectedIssue(value === 'none' ? null : parseInt(value))}
+            <Select
+              value={selectedIssue?.toString() || "none"}
+              onValueChange={(value) =>
+                setSelectedIssue(value === "none" ? null : Number.parseInt(value))
+              }
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select issue..." />
@@ -112,7 +115,9 @@ export function CreateInstanceForm({ onInstanceCreated }: CreateInstanceFormProp
                 {MOCK_ISSUES.map((issue) => (
                   <SelectItem key={issue.number} value={issue.number.toString()}>
                     <div className="flex flex-col items-start">
-                      <span>#{issue.number} - {issue.title}</span>
+                      <span>
+                        #{issue.number} - {issue.title}
+                      </span>
                     </div>
                   </SelectItem>
                 ))}
@@ -123,7 +128,7 @@ export function CreateInstanceForm({ onInstanceCreated }: CreateInstanceFormProp
           {/* Launch Button */}
           <div className="space-y-2">
             <label className="text-sm font-medium opacity-0">Launch</label>
-            <Button 
+            <Button
               onClick={handleLaunch}
               disabled={!prompt.trim() || isCreating}
               className="w-full"
@@ -161,11 +166,7 @@ export function CreateInstanceForm({ onInstanceCreated }: CreateInstanceFormProp
             {selectedIssueData.labels.length > 0 && (
               <div className="flex gap-1 mt-2">
                 {selectedIssueData.labels.map((label) => (
-                  <Badge 
-                    key={label} 
-                    variant={getLabelBadgeColor(label)}
-                    className="text-xs"
-                  >
+                  <Badge key={label} variant={getLabelBadgeColor(label)} className="text-xs">
                     {label}
                   </Badge>
                 ))}
@@ -177,8 +178,10 @@ export function CreateInstanceForm({ onInstanceCreated }: CreateInstanceFormProp
         {/* Help Text */}
         <div className="text-xs text-muted-foreground">
           <p>
-            This will create a new Git worktree, tmux session, and Claude agent. 
-            {selectedIssue ? ' The agent will have context about the selected issue.' : ' Without an issue, this will be an adhoc session.'}
+            This will create a new Git worktree, tmux session, and Claude agent.
+            {selectedIssue
+              ? " The agent will have context about the selected issue."
+              : " Without an issue, this will be an adhoc session."}
           </p>
         </div>
       </CardContent>
