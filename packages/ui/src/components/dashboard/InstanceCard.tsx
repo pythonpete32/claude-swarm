@@ -1,9 +1,20 @@
-import { Card, CardContent, CardHeader } from '../ui/card';
-import { Badge } from '../ui/badge';
-import { Button } from '../ui/button';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/collapsible';
-import { ChevronDown, Play, Square, Eye, GitBranch as GitBranchIcon, Trash2, FileEdit, Copy, GitMerge, GitFork } from 'lucide-react';
-import type { Instance, InstanceAction } from '@/types/instance';
+import type { Instance, InstanceAction } from "@/types/instance";
+import {
+  ChevronDown,
+  Copy,
+  Eye,
+  FileEdit,
+  GitBranch as GitBranchIcon,
+  GitFork,
+  GitMerge,
+  Play,
+  Square,
+  Trash2,
+} from "lucide-react";
+import { Badge } from "../ui/badge";
+import { Button } from "../ui/button";
+import { Card, CardContent, CardHeader } from "../ui/card";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../ui/collapsible";
 
 interface InstanceCardProps {
   instance: Instance;
@@ -12,14 +23,14 @@ interface InstanceCardProps {
   onAction: (action: InstanceAction, instanceId: string) => void;
 }
 
-export function InstanceCard({ 
-  instance, 
-  isExpanded = false, 
-  onToggleExpand, 
-  onAction 
+export function InstanceCard({
+  instance,
+  isExpanded = false,
+  onToggleExpand,
+  onAction,
 }: InstanceCardProps) {
-  const isRunning = instance.status === 'running';
-  
+  const isRunning = instance.status === "running";
+
   const getStatusIcon = () => {
     return isRunning ? (
       <Play className="h-4 w-4 text-green-500" />
@@ -29,19 +40,19 @@ export function InstanceCard({
   };
 
   const getStatusColor = () => {
-    return isRunning ? 'border-l-green-500' : 'border-l-gray-300';
+    return isRunning ? "border-l-green-500" : "border-l-gray-300";
   };
 
   const getTypeIcon = () => {
     switch (instance.type) {
-      case 'work':
-        return '🔨';
-      case 'review':
-        return '🔬';
-      case 'adhoc':
-        return '⚡';
+      case "work":
+        return "🔨";
+      case "review":
+        return "🔬";
+      case "adhoc":
+        return "⚡";
       default:
-        return '📝';
+        return "📝";
     }
   };
 
@@ -51,18 +62,20 @@ export function InstanceCard({
     const diffMs = now.getTime() - date.getTime();
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
     const diffMinutes = Math.floor(diffMs / (1000 * 60));
-    
+
     if (diffHours > 0) {
       return `${diffHours}h ago`;
     } else if (diffMinutes > 0) {
       return `${diffMinutes}m ago`;
     } else {
-      return 'just now';
+      return "just now";
     }
   };
 
   return (
-    <Card className={`border-l-4 transition-all duration-200 ${getStatusColor()} ${isExpanded ? 'shadow-md' : ''}`}>
+    <Card
+      className={`border-l-4 transition-all duration-200 ${getStatusColor()} ${isExpanded ? "shadow-md" : ""}`}
+    >
       <Collapsible open={isExpanded} onOpenChange={() => onToggleExpand(instance.id)}>
         <CollapsibleTrigger asChild>
           <CardHeader className="cursor-pointer hover:bg-muted/50">
@@ -78,22 +91,22 @@ export function InstanceCard({
                     </p>
                   )}
                   {instance.prompt && !instance.issue_number && (
-                    <p className="text-sm text-muted-foreground line-clamp-1">
-                      {instance.prompt}
-                    </p>
+                    <p className="text-sm text-muted-foreground line-clamp-1">{instance.prompt}</p>
                   )}
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <Badge variant={isRunning ? 'default' : 'secondary'}>
-                  {isRunning ? 'Running' : 'Terminated'}
+                <Badge variant={isRunning ? "default" : "secondary"}>
+                  {isRunning ? "Running" : "Terminated"}
                 </Badge>
-                <ChevronDown className={`h-4 w-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                <ChevronDown
+                  className={`h-4 w-4 transition-transform ${isExpanded ? "rotate-180" : ""}`}
+                />
               </div>
             </div>
           </CardHeader>
         </CollapsibleTrigger>
-        
+
         <CollapsibleContent>
           <CardContent className="pt-0">
             <div className="space-y-4">
@@ -132,7 +145,7 @@ export function InstanceCard({
                 </div>
               )}
 
-              {instance.status === 'terminated' && instance.terminated_at && (
+              {instance.status === "terminated" && instance.terminated_at && (
                 <div className="p-3 bg-gray-50 dark:bg-gray-900/20 rounded-md">
                   <p className="text-sm text-gray-700 dark:text-gray-300">
                     ⏹️ Instance terminated {formatTimeAgo(instance.terminated_at)}
@@ -142,71 +155,59 @@ export function InstanceCard({
 
               {/* Actions */}
               <div className="flex gap-2 flex-wrap">
-                <Button 
-                  size="sm" 
-                  variant="default"
-                  onClick={() => onAction('view', instance.id)}
-                >
-                  <Eye className="h-3 w-3 mr-1" /> 
+                <Button size="sm" variant="default" onClick={() => onAction("view", instance.id)}>
+                  <Eye className="h-3 w-3 mr-1" />
                   View
                 </Button>
-                
-                {instance.type === 'work' && isRunning && (
-                  <Button 
-                    size="sm" 
+
+                {instance.type === "work" && isRunning && (
+                  <Button
+                    size="sm"
                     variant="outline"
-                    onClick={() => onAction('review', instance.id)}
+                    onClick={() => onAction("review", instance.id)}
                   >
                     🔬 Review
                   </Button>
                 )}
-                
-                <Button 
-                  size="sm" 
-                  variant="outline"
-                  onClick={() => onAction('editor', instance.id)}
-                >
-                  <FileEdit className="h-3 w-3 mr-1" /> 
+
+                <Button size="sm" variant="outline" onClick={() => onAction("editor", instance.id)}>
+                  <FileEdit className="h-3 w-3 mr-1" />
                   Editor
                 </Button>
-                
-                <Button 
-                  size="sm" 
-                  variant="outline"
-                  onClick={() => onAction('copy', instance.id)}
-                >
-                  <Copy className="h-3 w-3 mr-1" /> 
+
+                <Button size="sm" variant="outline" onClick={() => onAction("copy", instance.id)}>
+                  <Copy className="h-3 w-3 mr-1" />
                   Copy
                 </Button>
 
-                {instance.type === 'work' && isRunning && (
+                {instance.type === "work" && isRunning && (
                   <>
-                    <Button 
-                      size="sm" 
+                    <Button
+                      size="sm"
                       variant="outline"
-                      onClick={() => onAction('fork', instance.id)}
+                      onClick={() => onAction("fork", instance.id)}
                     >
-                      <GitFork className="h-3 w-3 mr-1" /> 
+                      <GitFork className="h-3 w-3 mr-1" />
                       Fork
                     </Button>
-                    
-                    <Button 
-                      size="sm" 
+
+                    <Button
+                      size="sm"
                       variant="outline"
-                      onClick={() => onAction('merge', instance.id)}
+                      onClick={() => onAction("merge", instance.id)}
                     >
-                      <GitMerge className="h-3 w-3 mr-1" /> 
+                      <GitMerge className="h-3 w-3 mr-1" />
                       Merge
                     </Button>
                   </>
                 )}
-                
-                <Button 
-                  size="sm" 
+
+                <Button
+                  size="sm"
                   variant="destructive"
-                  onClick={() => onAction('kill', instance.id)}
+                  onClick={() => onAction("kill", instance.id)}
                 >
-                  <Trash2 className="h-3 w-3 mr-1" /> 
+                  <Trash2 className="h-3 w-3 mr-1" />
                   Kill
                 </Button>
               </div>

@@ -1,20 +1,12 @@
-import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
-import { Button } from '../ui/button';
-import { Badge } from '../ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { Input } from '../ui/input';
-import { 
-  Settings, 
-  Search, 
-  Filter,
-  Calendar,
-  Play,
-  Square,
-  Plus
-} from 'lucide-react';
-import { MOCK_ISSUES, MOCK_INSTANCES } from '../../types/instance';
-import type { GitHubIssue, Instance } from '@/types/instance';
+import type { GitHubIssue, Instance } from "@/types/instance";
+import { Calendar, Filter, Play, Plus, Search, Settings, Square } from "lucide-react";
+import { useState } from "react";
+import { MOCK_INSTANCES, MOCK_ISSUES } from "../../types/instance";
+import { Badge } from "../ui/badge";
+import { Button } from "../ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import { Input } from "../ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 
 interface KanbanBoardProps {
   projectId?: string;
@@ -27,103 +19,108 @@ interface KanbanColumn {
 }
 
 export function KanbanBoard({ projectId }: KanbanBoardProps) {
-  const [selectedProject, setSelectedProject] = useState(projectId || 'main-project');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedProject, setSelectedProject] = useState(projectId || "main-project");
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Mock project data
   const mockProjects = [
-    { id: 'main-project', name: 'Main Project Board' },
-    { id: 'feature-board', name: 'Feature Development' },
-    { id: 'bug-fixes', name: 'Bug Fixes & Maintenance' },
+    { id: "main-project", name: "Main Project Board" },
+    { id: "feature-board", name: "Feature Development" },
+    { id: "bug-fixes", name: "Bug Fixes & Maintenance" },
   ];
 
   // Mock columns with issues
   const mockColumns: KanbanColumn[] = [
     {
-      id: 'todo',
-      name: 'To Do',
+      id: "todo",
+      name: "To Do",
       items: [
         {
           ...MOCK_ISSUES[2],
           number: 789,
-          title: 'Improve mobile responsiveness',
-          labels: ['enhancement', 'priority-low'],
+          title: "Improve mobile responsiveness",
+          labels: ["enhancement", "priority-low"],
         },
         {
           number: 101,
-          title: 'Add user profile page',
-          body: 'Users need a dedicated profile page to manage their account settings',
-          state: 'open',
-          labels: ['feature', 'priority-medium'],
-          created_at: '2024-01-14T15:30:00Z',
-          updated_at: '2024-01-14T15:30:00Z',
+          title: "Add user profile page",
+          body: "Users need a dedicated profile page to manage their account settings",
+          state: "open",
+          labels: ["feature", "priority-medium"],
+          created_at: "2024-01-14T15:30:00Z",
+          updated_at: "2024-01-14T15:30:00Z",
         },
       ],
     },
     {
-      id: 'in-progress',
-      name: 'In Progress',
+      id: "in-progress",
+      name: "In Progress",
       items: [
         MOCK_ISSUES[0], // Issue #123 - Fix authentication system
         MOCK_ISSUES[1], // Issue #456 - Add dark mode toggle
       ],
     },
     {
-      id: 'review',
-      name: 'In Review',
+      id: "review",
+      name: "In Review",
       items: [
         {
           number: 98,
-          title: 'Optimize database queries',
-          body: 'Several queries are slow and need optimization',
-          state: 'open',
-          labels: ['performance', 'priority-high'],
-          created_at: '2024-01-13T11:20:00Z',
-          updated_at: '2024-01-15T09:45:00Z',
+          title: "Optimize database queries",
+          body: "Several queries are slow and need optimization",
+          state: "open",
+          labels: ["performance", "priority-high"],
+          created_at: "2024-01-13T11:20:00Z",
+          updated_at: "2024-01-15T09:45:00Z",
         },
       ],
     },
     {
-      id: 'done',
-      name: 'Done',
+      id: "done",
+      name: "Done",
       items: [
         {
           number: 87,
-          title: 'Fix header navigation bug',
-          body: 'Navigation links not working on mobile',
-          state: 'closed',
-          labels: ['bug', 'priority-medium'],
-          created_at: '2024-01-12T14:15:00Z',
-          updated_at: '2024-01-15T10:30:00Z',
+          title: "Fix header navigation bug",
+          body: "Navigation links not working on mobile",
+          state: "closed",
+          labels: ["bug", "priority-medium"],
+          created_at: "2024-01-12T14:15:00Z",
+          updated_at: "2024-01-15T10:30:00Z",
         },
       ],
     },
   ];
 
   const getInstancesForIssue = (issueNumber: number): Instance[] => {
-    return MOCK_INSTANCES.filter(instance => instance.issue_number === issueNumber);
+    return MOCK_INSTANCES.filter((instance) => instance.issue_number === issueNumber);
   };
 
   const getLabelBadgeColor = (label: string) => {
-    if (label.includes('bug') || label.includes('priority-high')) return 'destructive';
-    if (label.includes('feature') || label.includes('priority-medium')) return 'default';
-    if (label.includes('enhancement') || label.includes('priority-low')) return 'secondary';
-    return 'outline';
+    if (label.includes("bug") || label.includes("priority-high")) return "destructive";
+    if (label.includes("feature") || label.includes("priority-medium")) return "default";
+    if (label.includes("enhancement") || label.includes("priority-low")) return "secondary";
+    return "outline";
   };
 
   const getColumnColor = (columnId: string) => {
     switch (columnId) {
-      case 'todo': return 'border-t-gray-400';
-      case 'in-progress': return 'border-t-blue-400';
-      case 'review': return 'border-t-orange-400';
-      case 'done': return 'border-t-green-400';
-      default: return 'border-t-gray-400';
+      case "todo":
+        return "border-t-gray-400";
+      case "in-progress":
+        return "border-t-blue-400";
+      case "review":
+        return "border-t-orange-400";
+      case "done":
+        return "border-t-green-400";
+      default:
+        return "border-t-gray-400";
     }
   };
 
   const IssueCard = ({ issue }: { issue: GitHubIssue }) => {
     const instances = getInstancesForIssue(issue.number);
-    const runningInstances = instances.filter(i => i.status === 'running');
+    const runningInstances = instances.filter((i) => i.status === "running");
 
     return (
       <Card className="cursor-pointer hover:shadow-md transition-shadow">
@@ -140,29 +137,21 @@ export function KanbanBoard({ projectId }: KanbanBoardProps) {
                 ) : (
                   <Square className="h-3 w-3 text-gray-400" />
                 )}
-                <span className="text-xs text-muted-foreground">
-                  {instances.length}
-                </span>
+                <span className="text-xs text-muted-foreground">{instances.length}</span>
               </div>
             )}
           </div>
         </CardHeader>
         <CardContent className="pt-0">
           {issue.body && (
-            <p className="text-xs text-muted-foreground line-clamp-2 mb-3">
-              {issue.body}
-            </p>
+            <p className="text-xs text-muted-foreground line-clamp-2 mb-3">{issue.body}</p>
           )}
-          
+
           {/* Labels */}
           {issue.labels.length > 0 && (
             <div className="flex gap-1 flex-wrap mb-3">
               {issue.labels.map((label) => (
-                <Badge 
-                  key={label} 
-                  variant={getLabelBadgeColor(label)}
-                  className="text-xs"
-                >
+                <Badge key={label} variant={getLabelBadgeColor(label)} className="text-xs">
                   {label}
                 </Badge>
               ))}
@@ -172,19 +161,17 @@ export function KanbanBoard({ projectId }: KanbanBoardProps) {
           {/* Instances */}
           {instances.length > 0 && (
             <div className="space-y-1">
-              <div className="text-xs font-medium text-muted-foreground">
-                Active Instances:
-              </div>
+              <div className="text-xs font-medium text-muted-foreground">Active Instances:</div>
               {instances.map((instance) => (
                 <div key={instance.id} className="flex items-center gap-2 text-xs">
-                  {instance.status === 'running' ? (
+                  {instance.status === "running" ? (
                     <Play className="h-2 w-2 text-green-500" />
                   ) : (
                     <Square className="h-2 w-2 text-gray-400" />
                   )}
                   <span className="font-mono">{instance.id}</span>
-                  <Badge 
-                    variant={instance.status === 'running' ? 'default' : 'secondary'}
+                  <Badge
+                    variant={instance.status === "running" ? "default" : "secondary"}
                     className="text-xs"
                   >
                     {instance.status}
@@ -198,9 +185,7 @@ export function KanbanBoard({ projectId }: KanbanBoardProps) {
           <div className="flex items-center justify-between mt-3 pt-2 border-t">
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
               <Calendar className="h-3 w-3" />
-              <span>
-                {new Date(issue.updated_at).toLocaleDateString()}
-              </span>
+              <span>{new Date(issue.updated_at).toLocaleDateString()}</span>
             </div>
             {instances.length === 0 && (
               <Button size="sm" variant="outline" className="h-6 text-xs">
@@ -280,15 +265,15 @@ export function KanbanBoard({ projectId }: KanbanBoardProps) {
             {/* Column Items */}
             <div className="space-y-3">
               {column.items
-                .filter(item => 
-                  searchQuery === '' || 
-                  item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                  item.number.toString().includes(searchQuery)
+                .filter(
+                  (item) =>
+                    searchQuery === "" ||
+                    item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    item.number.toString().includes(searchQuery),
                 )
                 .map((issue) => (
                   <IssueCard key={issue.number} issue={issue} />
-                ))
-              }
+                ))}
             </div>
 
             {/* Add Item Button */}

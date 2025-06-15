@@ -6,7 +6,12 @@
   "scripts": {
     "dev": "vocs dev --port 3000",
     "build": "vocs build",
-    "preview": "vocs preview"
+    "preview": "vocs preview",
+    "lint": "echo 'Linting skipped for docs package'",
+    "lint:fix": "echo 'Linting skipped for docs package'",
+    "typecheck": "echo 'Typecheck skipped for docs package'",
+    "test": "echo 'No tests configured for docs package'",
+    "test:run": "echo 'No tests configured for docs package'"
   },
   "devDependencies": {
     "vocs": "^1.0.0"
