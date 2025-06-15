@@ -1,0 +1,426 @@
+---
+title: Contributing to Documentation
+description: Learn how to contribute to and maintain the Claude Swarm documentation site
+---
+
+# Contributing to Documentation
+
+This guide explains how to contribute to the Claude Swarm documentation, including writing, editing, and maintaining the docs site built with [Vocs](https://vocs.dev).
+
+:::tip[Documentation-Driven Development]
+Claude Swarm follows a **documentation-first approach**. We write docs before code to ensure clear requirements and better user experience.
+:::
+
+## Documentation Architecture
+
+### Site Structure
+
+```
+packages/docs/
+├── docs/                    # Documentation content
+│   ├── index.mdx           # Homepage (landing layout)
+│   ├── getting-started.mdx # Quick start guide
+│   ├── concepts/           # Core concepts
+│   ├── cli/               # CLI reference
+│   ├── api/               # API documentation
+│   ├── guides/            # How-to guides
+│   ├── contributing/      # Contribution guides
+│   └── playground.mdx     # Interactive examples
+├── public/                # Static assets
+│   ├── logo.svg          # Site logo
+│   ├── favicon.ico       # Site favicon
+│   └── images/           # Documentation images
+├── vocs.config.ts        # Site configuration
+└── package.json          # Dependencies and scripts
+```
+
+### Documentation Types
+
+We follow the [Diátaxis framework](https://diataxis.fr/) for documentation:
+
+1. **📚 Tutorials** (`/getting-started`) - Learning-oriented
+2. **📖 How-to Guides** (`/guides/`) - Problem-oriented  
+3. **📋 Reference** (`/api/`, `/cli/`) - Information-oriented
+4. **💡 Explanation** (`/concepts/`) - Understanding-oriented
+
+## Writing Guidelines
+
+### Content Standards
+
+#### Use Clear, Actionable Language
+
+```markdown
+<!-- ✅ Good: Clear and actionable -->
+## Set up GitHub Integration
+
+Configure your GitHub token to enable issue tracking:
+
+```bash
+claude-swarm config set github.token YOUR_TOKEN
+```
+
+<!-- ❌ Bad: Vague and unclear -->
+## GitHub
+
+You might want to configure GitHub stuff.
+```
+
+#### Include Code Examples
+
+Always provide working code examples:
+
+```typescript
+// ✅ Complete, runnable example
+import { WorktreeManager } from '@claude-swarm/core'
+
+const manager = new WorktreeManager('./project')
+
+await manager.createWorktree({
+  path: './worktrees/feature-123',
+  branch: 'feature-123',
+  agentId: 'feature-dev'
+})
+
+// ❌ Incomplete fragment
+const manager = new WorktreeManager()
+// ... do something
+```
+
+#### Use Appropriate Callouts
+
+```markdown
+<!-- For important warnings -->
+:::warning[Important]
+Always backup your work before running cleanup operations.
+:::
+
+<!-- For helpful tips -->
+:::tip[Pro Tip]
+Use agent IDs to organize different types of work.
+:::
+
+<!-- For critical information -->
+:::danger[Critical]
+Never run `--force` without checking active worktrees first.
+:::
+
+<!-- For additional information -->
+:::info[Learn More]
+Check out the [API Reference](/api/core) for detailed function signatures.
+:::
+```
+
+### Markdown Features
+
+#### Frontmatter
+
+Every page should include frontmatter:
+
+```markdown
+---
+title: Page Title
+description: Brief description for SEO and navigation
+layout: docs  # or 'landing' for homepage-style pages
+---
+```
+
+#### Code Blocks with Features
+
+Use enhanced code blocks with syntax highlighting:
+
+```typescript {2,5-8} showLineNumbers filename="example.ts"
+import { defineConfig } from '@claude-swarm/core'
+
+export default defineConfig({
+  github: {
+    token: process.env.GITHUB_TOKEN,  // Highlighted line
+    baseUrl: 'https://api.github.com',
+    timeout: 30000,
+    retryCount: 3                     // Highlighted lines end
+  }
+})
+```
+
+#### Code Groups for Multiple Options
+
+```bash tab="npm"
+npm install @claude-swarm/cli
+```
+
+```bash tab="bun"
+bun add @claude-swarm/cli
+```
+
+```bash tab="pnpm"
+pnpm add @claude-swarm/cli
+```
+
+#### Include External Code Files
+
+```typescript
+// Include from file
+```ts // [!include ~/examples/config.ts]
+```
+
+#### TypeScript Twoslash for Type Information
+
+```typescript twoslash
+import { WorktreeOptions } from '@claude-swarm/core'
+
+const options: WorktreeOptions = {
+  path: './worktrees/test',
+  branch: 'feature-test'
+}
+//    ^?
+```
+
+## Local Development
+
+### Setting Up the Docs Site
+
+```bash
+# Navigate to docs package
+cd packages/docs
+
+# Install dependencies
+bun install
+
+# Start development server
+bun run dev
+
+# The site will be available at http://localhost:5173
+```
+
+### Available Scripts
+
+```bash
+# Development
+bun run dev          # Start dev server with hot reload
+
+# Building
+bun run build        # Build for production
+bun run preview      # Preview production build
+
+# Linting (from root)
+bun run lint         # Lint all code
+bun run typecheck    # Type checking
+```
+
+### Development Workflow
+
+1. **Create a new branch** for your documentation changes
+2. **Make your changes** in the appropriate `.mdx` files
+3. **Test locally** using `bun run dev`
+4. **Check the build** with `bun run build`
+5. **Submit a pull request** with clear description
+
+## Configuration
+
+### Site Configuration (`vocs.config.ts`)
+
+The main configuration file controls site behavior:
+
+```typescript
+export default defineConfig({
+  // Basic metadata
+  title: 'Claude Swarm',
+  description: 'Multi-agent development environment',
+  
+  // Navigation structure
+  sidebar: [
+    {
+      text: 'Getting Started',
+      items: [
+        { text: 'Introduction', link: '/' },
+        { text: 'Quick Start', link: '/getting-started' }
+      ]
+    }
+  ],
+  
+  // Theme and branding
+  theme: {
+    accentColor: { light: '#3b82f6', dark: '#60a5fa' }
+  },
+  
+  // OG image configuration
+  ogImageUrl: 'https://vocs.dev/api/og?logo=%logo&title=%title',
+  
+  // Search configuration
+  search: {
+    boostDocument(documentId) {
+      return documentId.includes('/concepts/') ? 2 : 1
+    }
+  }
+})
+```
+
+### Adding New Sections
+
+To add a new documentation section:
+
+1. **Create the directory structure**:
+   ```bash
+   mkdir -p docs/new-section
+   ```
+
+2. **Add to sidebar configuration**:
+   ```typescript
+   sidebar: [
+     // ... existing sections
+     {
+       text: 'New Section',
+       items: [
+         { text: 'Overview', link: '/new-section/' },
+         { text: 'Advanced', link: '/new-section/advanced' }
+       ]
+     }
+   ]
+   ```
+
+3. **Create content files**:
+   ```bash
+   touch docs/new-section/index.mdx
+   touch docs/new-section/advanced.mdx
+   ```
+
+## Style Guide
+
+### Writing Style
+
+- **Use active voice**: "Run the command" instead of "The command should be run"
+- **Be concise**: Remove unnecessary words and filler
+- **Use consistent terminology**: Stick to established terms (worktree, not work-tree)
+- **Write scannable content**: Use headers, lists, and callouts effectively
+
+### Code Style
+
+- **Include complete examples**: Show full working code, not fragments
+- **Add comments for clarity**: Explain non-obvious parts
+- **Use TypeScript**: Show types for better understanding
+- **Test your examples**: Ensure all code examples actually work
+
+### Visual Style
+
+- **Use emojis sparingly**: Only in callouts and section headers where they add clarity
+- **Consistent formatting**: Follow established patterns for similar content
+- **Proper hierarchy**: Use heading levels logically (H1 → H2 → H3)
+
+## Advanced Features
+
+### Custom Components
+
+You can create custom React components for the docs:
+
+```typescript filename="components/FeatureGrid.tsx"
+export function FeatureGrid({ features }: { features: Feature[] }) {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {features.map(feature => (
+        <div key={feature.title} className="border rounded-lg p-4">
+          <h3 className="font-semibold">{feature.title}</h3>
+          <p className="text-sm text-gray-600">{feature.description}</p>
+        </div>
+      ))}
+    </div>
+  )
+}
+```
+
+Use in MDX:
+
+```markdown
+import { FeatureGrid } from '../components/FeatureGrid'
+
+<FeatureGrid features={[
+  { title: 'Fast', description: 'Lightning quick setup' },
+  { title: 'Reliable', description: 'Battle-tested workflows' }
+]} />
+```
+
+### OG Image Generation
+
+The site automatically generates Open Graph images for social sharing:
+
+```typescript
+// Dynamic OG images based on page content
+ogImageUrl: {
+  '/': 'https://vocs.dev/api/og?logo=%logo&title=Claude%20Swarm',
+  '/api/*': 'https://vocs.dev/api/og?logo=%logo&title=API%20Reference&description=%title',
+  '/concepts/*': 'https://vocs.dev/api/og?logo=%logo&title=Concepts&description=%title'
+}
+```
+
+### Search Optimization
+
+Configure search behavior to boost important content:
+
+```typescript
+search: {
+  boostDocument(documentId) {
+    // Boost getting started and concepts
+    if (documentId.includes('/getting-started') || documentId.includes('/concepts/')) {
+      return 2
+    }
+    // Reduce API reference prominence
+    if (documentId.includes('/api/')) {
+      return 0.5
+    }
+    return 1
+  }
+}
+```
+
+## Review Process
+
+### Before Submitting
+
+1. **✅ Check spelling and grammar**
+2. **✅ Verify all links work**
+3. **✅ Test code examples**
+4. **✅ Build the site locally** (`bun run build`)
+5. **✅ Check responsive design**
+
+### Pull Request Guidelines
+
+When submitting documentation changes:
+
+1. **Clear title**: "docs: add worktree management guide"
+2. **Describe changes**: What was added/changed and why
+3. **Include screenshots**: For visual changes
+4. **Link related issues**: Reference GitHub issues if applicable
+
+### Review Checklist
+
+Reviewers should check:
+
+- [ ] Content is accurate and up-to-date
+- [ ] Code examples work as expected  
+- [ ] Navigation and links function properly
+- [ ] Formatting is consistent
+- [ ] No spelling or grammar errors
+- [ ] Site builds without errors
+
+## Deployment
+
+The documentation site is automatically deployed when changes are merged to the main branch. The deployment process:
+
+1. **Build the site** using `bun run build`
+2. **Deploy to production** hosting
+3. **Update search index** for new content
+4. **Generate new OG images** for changed pages
+
+:::tip[Contributing Tips]
+- Start with small changes to get familiar with the workflow
+- Look at existing pages for formatting examples
+- Ask questions in Discord if you're unsure about anything
+- Documentation improvements are always welcome!
+:::
+
+## Resources
+
+- **[Vocs Documentation](https://vocs.dev)** - Framework documentation
+- **[Markdown Guide](https://www.markdownguide.org)** - Markdown syntax reference
+- **[Diátaxis Framework](https://diataxis.fr)** - Documentation system philosophy
+- **[Discord Community](https://discord.gg/claude-swarm)** - Get help and discuss changes
+
+Happy documenting! 📚✨

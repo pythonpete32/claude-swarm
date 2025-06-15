@@ -1,0 +1,613 @@
+---
+title: Core API Reference
+description: Complete API reference for Claude Swarm core modules
+---
+
+# Core API Reference
+
+The Core API provides the fundamental building blocks for Claude Swarm's functionality. All core modules are designed to be pure, testable, and composable.
+
+:::tip[Library-First Design]
+All core modules can be used independently or as part of the full Claude Swarm system. They follow dependency injection patterns for easy testing and customization.
+:::
+
+## WorktreeManager
+
+The `WorktreeManager` handles git worktree operations with proper isolation and cleanup.
+
+### Constructor
+
+```typescript
+import { WorktreeManager } from '@claude-swarm/core'
+
+const manager = new WorktreeManager(gitOps?: GitOps)
+```
+
+**Parameters:**
+- `gitOps` (optional): Custom git operations implementation
+
+### Methods
+
+#### `createWorktree(options)`
+
+Creates a new git worktree with optional agent context.
+
+```typescript
+async createWorktree(options: WorktreeOptions): Promise<Worktree>
+```
+
+**Parameters:**
+
+```typescript
+interface WorktreeOptions {
+  path: string          // Target path for worktree
+  branch: string        // Branch name to checkout
+  upstream?: string     // Remote branch to track
+  agentId?: string      // Agent identifier for context isolation
+}
+```
+
+**Returns:**
+
+```typescript
+interface Worktree {
+  path: string          // Absolute path to worktree
+  branch: string        // Current branch name
+  commit: string        // Current commit hash
+  agentId?: string      // Associated agent ID
+  createdAt: Date       // Creation timestamp
+}
+```
+
+**Example:**
+
+```typescript
+const worktree = await manager.createWorktree({
+  path: './worktrees/feature-auth',
+  branch: 'feature/user-authentication',
+  upstream: 'origin/main',
+  agentId: 'auth-specialist'
+})
+
+console.log(`Created worktree at ${worktree.path}`)
+```
+
+**Throws:**
+- `WorktreeError` with code `WORKTREE_EXISTS` if path already exists
+- `WorktreeError` with code `WORKTREE_INVALID_PATH` if path is invalid
+- `GitError` with code `GIT_COMMAND_FAILED` if git operation fails
+
+#### `removeWorktree(path, options?)`
+
+Safely removes a worktree with optional context preservation.
+
+```typescript
+async removeWorktree(
+  path: string, 
+  options?: RemoveWorktreeOptions
+): Promise<boolean>
+```
+
+**Parameters:**
+
+```typescript
+interface RemoveWorktreeOptions {
+  force?: boolean           // Force removal even if dirty
+  preserveContext?: boolean // Keep agent context files
+  backup?: boolean          // Create backup before removal
+}
+```
+
+**Example:**
+
+```typescript
+// Safe removal with context preservation
+const removed = await manager.removeWorktree('./worktrees/feature-auth', {
+  preserveContext: true,
+  backup: true
+})
+
+if (removed) {
+  console.log('Worktree removed successfully')
+}
+```
+
+#### `listWorktrees()`
+
+Lists all active worktrees with their status.
+
+```typescript
+async listWorktrees(): Promise<Worktree[]>
+```
+
+**Example:**
+
+```typescript
+const worktrees = await manager.listWorktrees()
+
+worktrees.forEach(wt => {
+  console.log(`${wt.path} - ${wt.branch} (${wt.agentId || 'no agent'})`)
+})
+```
+
+#### `validateWorktree(path)`
+
+Validates worktree state and configuration.
+
+```typescript
+async validateWorktree(path: string): Promise<WorktreeValidation>
+```
+
+**Returns:**
+
+```typescript
+interface WorktreeValidation {
+  isValid: boolean
+  issues: ValidationIssue[]
+  suggestions: string[]
+}
+
+interface ValidationIssue {
+  type: 'error' | 'warning'
+  code: string
+  message: string
+  path?: string
+}
+```
+
+## GitOps
+
+The `GitOps` class provides git operations with enhanced error handling and validation.
+
+### Constructor
+
+```typescript
+import { GitOps } from '@claude-swarm/core'
+
+const gitOps = new GitOps(options?: GitOpsOptions)
+```
+
+```typescript
+interface GitOpsOptions {
+  timeout?: number      // Command timeout in ms (default: 30000)
+  retryCount?: number   // Retry attempts (default: 3)
+  workingDir?: string   // Default working directory
+}
+```
+
+### Methods
+
+#### `validateRepository(path)`
+
+Validates that a directory is a valid git repository.
+
+```typescript
+async validateRepository(path: string): Promise<Repository>
+```
+
+**Returns:**
+
+```typescript
+interface Repository {
+  path: string
+  isValid: boolean
+  branch: string
+  remote?: string
+  hasUncommittedChanges: boolean
+  worktrees: string[]
+}
+```
+
+#### `createBranch(name, options?)`
+
+Creates a new git branch with optional upstream tracking.
+
+```typescript
+async createBranch(
+  name: string, 
+  options?: CreateBranchOptions
+): Promise<Branch>
+```
+
+```typescript
+interface CreateBranchOptions {
+  baseBranch?: string   // Branch to create from (default: current)
+  track?: boolean       // Set up upstream tracking
+  checkout?: boolean    // Checkout after creation
+}
+```
+
+#### `executeGitCommand(command, options?)`
+
+Low-level git command execution with proper error handling.
+
+```typescript
+async executeGitCommand(
+  command: string[], 
+  options?: ExecOptions
+): Promise<GitCommandResult>
+```
+
+**Example:**
+
+```typescript
+const result = await gitOps.executeGitCommand([
+  'log', '--oneline', '--max-count=5'
+])
+
+console.log(result.stdout) // Recent commit history
+```
+
+## GitHubOps
+
+GitHub API integration with proper authentication and rate limiting.
+
+### Constructor
+
+```typescript
+import { GitHubOps } from '@claude-swarm/core'
+
+const githubOps = new GitHubOps(config: GitHubConfig)
+```
+
+```typescript
+interface GitHubConfig {
+  token: string         // GitHub personal access token
+  baseUrl?: string      // API base URL (default: https://api.github.com)
+  timeout?: number      // Request timeout
+  retryCount?: number   // Retry attempts for failed requests
+}
+```
+
+### Methods
+
+#### `getIssue(issueNumber, repo?)`
+
+Fetches issue details from GitHub.
+
+```typescript
+async getIssue(
+  issueNumber: number, 
+  repo?: string
+): Promise<GitHubIssue>
+```
+
+**Returns:**
+
+```typescript
+interface GitHubIssue {
+  id: number
+  number: number
+  title: string
+  body: string
+  state: 'open' | 'closed'
+  labels: Label[]
+  assignees: User[]
+  createdAt: Date
+  updatedAt: Date
+  url: string
+}
+```
+
+#### `createPullRequest(options)`
+
+Creates a new pull request.
+
+```typescript
+async createPullRequest(options: CreatePROptions): Promise<PullRequest>
+```
+
+```typescript
+interface CreatePROptions {
+  title: string
+  body: string
+  head: string          // Source branch
+  base: string          // Target branch
+  draft?: boolean       // Create as draft PR
+  repo?: string         // Repository (defaults to configured)
+}
+```
+
+## TmuxOps
+
+Tmux session management with worktree integration.
+
+### Constructor
+
+```typescript
+import { TmuxOps } from '@claude-swarm/core'
+
+const tmuxOps = new TmuxOps(config?: TmuxConfig)
+```
+
+```typescript
+interface TmuxConfig {
+  sessionPrefix?: string    // Prefix for session names
+  defaultLayout?: string    // Default pane layout
+  mouseSupport?: boolean    // Enable mouse support
+  statusBar?: boolean       // Show status bar
+}
+```
+
+### Methods
+
+#### `createSession(options)`
+
+Creates a new tmux session linked to a worktree.
+
+```typescript
+async createSession(options: CreateSessionOptions): Promise<TmuxSession>
+```
+
+```typescript
+interface CreateSessionOptions {
+  name: string
+  workingDirectory: string
+  layout?: string
+  commands?: string[]       // Initial commands to run
+  agentId?: string         // Link to agent context
+}
+```
+
+#### `attachToSession(name)`
+
+Attaches to an existing tmux session.
+
+```typescript
+async attachToSession(name: string): Promise<void>
+```
+
+#### `listSessions()`
+
+Lists all active tmux sessions.
+
+```typescript
+async listSessions(): Promise<TmuxSession[]>
+```
+
+## ClaudeOps
+
+Agent context management and Claude integration.
+
+### Constructor
+
+```typescript
+import { ClaudeOps } from '@claude-swarm/core'
+
+const claudeOps = new ClaudeOps(config?: ClaudeConfig)
+```
+
+```typescript
+interface ClaudeConfig {
+  contextPath?: string      // Base path for agent contexts
+  maxContextSize?: string   // Maximum context size (e.g., '100MB')
+  preserveHistory?: boolean // Keep conversation history
+}
+```
+
+### Methods
+
+#### `setupAgentContext(agentId, worktreePath)`
+
+Sets up isolated context for a Claude agent.
+
+```typescript
+async setupAgentContext(
+  agentId: string, 
+  worktreePath: string
+): Promise<AgentContext>
+```
+
+**Returns:**
+
+```typescript
+interface AgentContext {
+  agentId: string
+  contextPath: string
+  worktreePath: string
+  configPath: string
+  historyPath: string
+  createdAt: Date
+}
+```
+
+#### `getAgentContext(agentId)`
+
+Retrieves existing agent context.
+
+```typescript
+async getAgentContext(agentId: string): Promise<AgentContext | null>
+```
+
+#### `cleanupAgentContext(agentId, options?)`
+
+Cleans up agent context with preservation options.
+
+```typescript
+async cleanupAgentContext(
+  agentId: string,
+  options?: CleanupContextOptions
+): Promise<void>
+```
+
+## FileOps
+
+File system operations with safety checks and backup support.
+
+### Constructor
+
+```typescript
+import { FileOps } from '@claude-swarm/core'
+
+const fileOps = new FileOps(options?: FileOpsOptions)
+```
+
+### Methods
+
+#### `copyWithBackup(source, destination, options?)`
+
+Copies files with automatic backup creation.
+
+```typescript
+async copyWithBackup(
+  source: string,
+  destination: string,
+  options?: CopyOptions
+): Promise<CopyResult>
+```
+
+#### `safeDelete(path, options?)`
+
+Safely deletes files/directories with confirmation and backup.
+
+```typescript
+async safeDelete(
+  path: string,
+  options?: DeleteOptions
+): Promise<boolean>
+```
+
+## Error Handling
+
+All core modules use standardized error codes and factory functions:
+
+### Error Codes
+
+```typescript
+export const ERROR_CODES = {
+  // Worktree errors
+  WORKTREE_EXISTS: 'WORKTREE_EXISTS',
+  WORKTREE_INVALID_PATH: 'WORKTREE_INVALID_PATH',
+  WORKTREE_NOT_FOUND: 'WORKTREE_NOT_FOUND',
+  
+  // Git errors
+  GIT_COMMAND_FAILED: 'GIT_COMMAND_FAILED',
+  GIT_REPOSITORY_INVALID: 'GIT_REPOSITORY_INVALID',
+  
+  // GitHub errors
+  GITHUB_AUTH_FAILED: 'GITHUB_AUTH_FAILED',
+  GITHUB_RATE_LIMITED: 'GITHUB_RATE_LIMITED',
+  GITHUB_ISSUE_NOT_FOUND: 'GITHUB_ISSUE_NOT_FOUND',
+  
+  // Tmux errors
+  TMUX_SESSION_EXISTS: 'TMUX_SESSION_EXISTS',
+  TMUX_COMMAND_FAILED: 'TMUX_COMMAND_FAILED',
+  
+  // Agent errors
+  AGENT_CONTEXT_INVALID: 'AGENT_CONTEXT_INVALID',
+  AGENT_CONTEXT_FULL: 'AGENT_CONTEXT_FULL'
+} as const
+```
+
+### Error Factories
+
+```typescript
+import { ErrorFactory } from '@claude-swarm/core'
+
+// Create specific error types
+throw ErrorFactory.worktree(
+  ERROR_CODES.WORKTREE_EXISTS, 
+  'Worktree already exists at path',
+  { path: './worktrees/feature-123' }
+)
+
+throw ErrorFactory.github(
+  ERROR_CODES.GITHUB_ISSUE_NOT_FOUND,
+  'Issue not found or access denied',
+  { issueNumber: 123, repo: 'owner/repo' }
+)
+```
+
+### Error Handling Example
+
+```typescript
+import { 
+  WorktreeManager, 
+  ErrorFactory, 
+  ERROR_CODES 
+} from '@claude-swarm/core'
+
+async function createWorktreeWithErrorHandling(options: WorktreeOptions) {
+  try {
+    const worktree = await manager.createWorktree(options)
+    return { success: true, worktree }
+  } catch (error) {
+    if (error.code === ERROR_CODES.WORKTREE_EXISTS) {
+      return { 
+        success: false, 
+        error: 'Worktree already exists',
+        suggestion: 'Use a different path or remove the existing worktree'
+      }
+    }
+    
+    if (error.code === ERROR_CODES.GIT_COMMAND_FAILED) {
+      return {
+        success: false,
+        error: 'Git operation failed',
+        suggestion: 'Check your git configuration and repository state',
+        details: error.context
+      }
+    }
+    
+    // Generic error handling
+    return {
+      success: false,
+      error: error.message || 'Unknown error',
+      suggestion: 'Check the logs for more details'
+    }
+  }
+}
+```
+
+## TypeScript Types
+
+All core modules are fully typed. Import types as needed:
+
+```typescript
+import type {
+  WorktreeOptions,
+  Worktree,
+  GitHubIssue,
+  TmuxSession,
+  AgentContext
+} from '@claude-swarm/core'
+```
+
+:::info[Next Steps]
+- Explore [Workflow API](/api/workflows) for higher-level operations
+- Check out [Configuration API](/api/config) for customization options
+- Learn about [Custom Extensions](/guides/extending) for advanced use cases
+:::
+
+## Testing with Core APIs
+
+All core modules are designed for easy testing:
+
+```typescript
+import { vi } from 'vitest'
+import { WorktreeManager } from '@claude-swarm/core'
+
+// Mock git operations
+const mockGitOps = {
+  createWorktree: vi.fn().mockResolvedValue({
+    path: '/test/worktree',
+    branch: 'test-branch',
+    commit: 'abc123',
+    createdAt: new Date()
+  })
+}
+
+// Test with mocked dependencies
+const manager = new WorktreeManager(mockGitOps)
+const result = await manager.createWorktree({
+  path: './test',
+  branch: 'test-branch'
+})
+
+expect(mockGitOps.createWorktree).toHaveBeenCalledWith({
+  path: './test',
+  branch: 'test-branch'
+})
+```
+
+The Core API provides the foundation for all Claude Swarm functionality while maintaining clean separation of concerns and excellent testability.

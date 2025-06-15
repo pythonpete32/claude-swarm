@@ -1,0 +1,492 @@
+---
+title: Interactive Playground
+description: Try out Claude Swarm features and explore code examples
+layout: docs
+---
+
+# Interactive Playground
+
+Welcome to the Claude Swarm playground! This page demonstrates various features and provides interactive examples you can try.
+
+:::tip[🎮 Interactive Features]
+This playground showcases Vocs features including code blocks, callouts, tabs, and interactive examples.
+:::
+
+## Code Examples
+
+### Basic Command Usage
+
+```bash
+# Set up a new project
+claude-swarm setup my-project
+
+# Work on a GitHub issue
+claude-swarm work-on-task --issue 123
+
+# List active worktrees
+claude-swarm list
+```
+
+### TypeScript API Examples
+
+```typescript twoslash
+// @filename: types.ts
+export interface WorktreeOptions {
+  path: string
+  branch: string
+  upstream?: string
+  agentId?: string
+}
+
+export interface GitHubConfig {
+  token: string
+  baseUrl?: string
+  timeout?: number
+}
+
+// @filename: worktree.ts
+import { WorktreeOptions } from './types'
+
+export class WorktreeManager {
+  constructor(private basePath: string) {}
+
+  async createWorktree(options: WorktreeOptions): Promise<void> {
+    // Implementation here
+    console.log(`Creating worktree at ${options.path}`)
+  }
+}
+
+// @filename: example.ts
+import { WorktreeManager } from './worktree'
+
+const manager = new WorktreeManager('/path/to/project')
+//    ^?
+
+await manager.createWorktree({
+  path: './worktrees/feature-123',
+  branch: 'feature-123',
+  agentId: 'feature-dev'
+})
+```
+
+### Advanced Configuration
+
+```typescript {2,8-12} showLineNumbers filename="claude-swarm.config.ts"
+import { defineConfig } from '@claude-swarm/core'
+
+export default defineConfig({
+  // GitHub integration
+  github: {
+    token: process.env.GITHUB_TOKEN,
+    baseUrl: 'https://api.github.com',
+    timeout: 30000,
+    defaultRepo: 'owner/repository'
+  },
+  
+  // Worktree configuration
+  worktree: {
+    basePath: './worktrees',
+    cleanupOnExit: true,
+    preserveContext: ['*.md', '*.json']
+  },
+  
+  // Tmux integration
+  tmux: {
+    enabled: true,
+    sessionPrefix: 'cs-',
+    defaultLayout: 'main-horizontal'
+  }
+})
+```
+
+## Interactive Features
+
+### Callouts & Alerts
+
+:::note[Information]
+This is a standard information callout.
+:::
+
+:::tip[Pro Tip]
+Use agent IDs to organize different types of work and maintain context between sessions.
+:::
+
+:::warning[Important]
+Always backup your work before running cleanup operations.
+:::
+
+:::danger[Critical]
+Never run `claude-swarm cleanup --all --force` without checking your active worktrees first.
+:::
+
+:::info[Custom Callout]
+You can create custom callouts with different colors and icons.
+:::
+
+### Code Groups
+
+Here are different ways to install Claude Swarm:
+
+```bash tab="npm"
+# Install with npm
+npm install -g @claude-swarm/cli
+
+# Verify installation
+claude-swarm --version
+```
+
+```bash tab="bun"
+# Install with Bun (recommended)
+bun add -g @claude-swarm/cli
+
+# Verify installation
+claude-swarm --version
+```
+
+```bash tab="pnpm"
+# Install with pnpm
+pnpm add -g @claude-swarm/cli
+
+# Verify installation
+claude-swarm --version
+```
+
+### Step-by-Step Guides
+
+Here's how to set up a new project workspace:
+
+#### Step 1: Initialize Your Project
+
+```bash
+cd /path/to/your/project
+claude-swarm setup my-awesome-project
+```
+
+#### Step 2: Configure GitHub Integration
+
+```bash
+# Set your GitHub token
+claude-swarm config set github.token YOUR_GITHUB_TOKEN
+
+# Set default repository
+claude-swarm config set github.defaultRepo owner/repo-name
+```
+
+#### Step 3: Create Your First Worktree
+
+```bash
+# Work on a specific issue
+claude-swarm work-on-task --issue 123 --agent-id feature-dev
+
+# Or work on a custom branch
+claude-swarm work-on-task --branch feature/user-auth
+```
+
+#### Step 4: Verify Setup
+
+```bash
+# Check your active worktrees
+claude-swarm list
+
+# Check tmux sessions (if enabled)
+tmux list-sessions
+```
+
+## Advanced Examples
+
+### Custom Workflow Implementation
+
+```typescript filename="custom-workflow.ts" {15-20}
+import { 
+  WorktreeManager, 
+  GitOps, 
+  GitHubOps, 
+  TmuxOps 
+} from '@claude-swarm/core'
+
+export async function customDeployWorkflow(
+  options: DeployOptions,
+  deps: WorkflowDependencies
+) {
+  const { worktreeManager, gitOps, githubOps } = deps
+
+  try {
+    // Create deployment worktree
+    const deployWorktree = await worktreeManager.createWorktree({
+      path: `./worktrees/deploy-${Date.now()}`,
+      branch: 'main',
+      agentId: 'deploy-agent'
+    })
+
+    // Run deployment steps
+    await gitOps.pullLatest(deployWorktree.path)
+    await runBuildProcess(deployWorktree.path)
+    await runTests(deployWorktree.path)
+    
+    // Create deployment PR if needed
+    if (options.createPR) {
+      await githubOps.createPullRequest({
+        title: `Deploy ${options.version}`,
+        body: `Automated deployment for version ${options.version}`,
+        base: 'production',
+        head: deployWorktree.branch
+      })
+    }
+
+    return { success: true, worktree: deployWorktree }
+  } catch (error) {
+    throw ErrorFactory.workflow(
+      ERROR_CODES.WORKFLOW_DEPLOY_FAILED,
+      'Deployment workflow failed',
+      { error, options }
+    )
+  }
+}
+```
+
+### Error Handling Patterns
+
+```typescript filename="error-handling.ts"
+import { ErrorFactory, ERROR_CODES } from '@claude-swarm/core'
+
+export async function safeWorktreeOperation(
+  operation: () => Promise<void>
+): Promise<OperationResult> {
+  try {
+    await operation()
+    return { success: true }
+  } catch (error) {
+    // Handle specific error types
+    if (error.code === ERROR_CODES.WORKTREE_EXISTS) {
+      return { 
+        success: false, 
+        error: 'Worktree already exists',
+        suggestion: 'Use --force to overwrite or choose a different name'
+      }
+    }
+    
+    if (error.code === ERROR_CODES.GIT_COMMAND_FAILED) {
+      return {
+        success: false,
+        error: 'Git operation failed',
+        suggestion: 'Check your git configuration and repository state'
+      }
+    }
+    
+    // Generic error handling
+    return {
+      success: false,
+      error: error.message || 'Unknown error occurred',
+      suggestion: 'Check the logs for more details'
+    }
+  }
+}
+```
+
+## Testing Examples
+
+### Unit Test Example
+
+```typescript filename="worktree.test.ts"
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { WorktreeManager } from '../src/core/worktree'
+
+describe('WorktreeManager', () => {
+  let worktreeManager: WorktreeManager
+  let mockGitOps: any
+
+  beforeEach(() => {
+    mockGitOps = {
+      createWorktree: vi.fn().mockResolvedValue({
+        path: '/test/worktree',
+        branch: 'test-branch'
+      }),
+      validateRepository: vi.fn().mockResolvedValue(true)
+    }
+    
+    worktreeManager = new WorktreeManager(mockGitOps)
+  })
+
+  it('should create a worktree with valid options', async () => {
+    const options = {
+      path: './worktrees/test',
+      branch: 'feature-test',
+      agentId: 'test-agent'
+    }
+
+    const result = await worktreeManager.createWorktree(options)
+
+    expect(mockGitOps.createWorktree).toHaveBeenCalledWith(options)
+    expect(result.path).toBe('/test/worktree')
+    expect(result.branch).toBe('test-branch')
+  })
+
+  it('should throw error for invalid repository', async () => {
+    mockGitOps.validateRepository.mockResolvedValue(false)
+
+    await expect(
+      worktreeManager.createWorktree({
+        path: './invalid',
+        branch: 'test'
+      })
+    ).rejects.toThrow('WORKTREE_INVALID_REPOSITORY')
+  })
+})
+```
+
+### Integration Test Example
+
+```typescript filename="integration.test.ts"
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { setupProjectWorkflow } from '../src/workflows/setup-project'
+import { createTestRepository, cleanupTestRepository } from './helpers'
+
+describe('Setup Project Workflow Integration', () => {
+  let testRepo: string
+
+  beforeEach(async () => {
+    testRepo = await createTestRepository()
+  })
+
+  afterEach(async () => {
+    await cleanupTestRepository(testRepo)
+  })
+
+  it('should set up project with all components', async () => {
+    const result = await setupProjectWorkflow({
+      projectName: 'test-project',
+      basePath: testRepo,
+      enableTmux: true,
+      enableGitHub: false
+    })
+
+    expect(result.success).toBe(true)
+    expect(result.worktree).toBeDefined()
+    expect(result.config).toBeDefined()
+    
+    // Verify worktree was created
+    const worktrees = await result.worktreeManager.listWorktrees()
+    expect(worktrees).toHaveLength(1)
+    expect(worktrees[0].name).toBe('test-project')
+  })
+})
+```
+
+## Configuration Playground
+
+Try different configuration options:
+
+### Basic Configuration
+
+```json filename="~/.claude-swarm/config.json"
+{
+  "github": {
+    "token": "your-github-token",
+    "defaultRepo": "owner/repository"
+  },
+  "tmux": {
+    "enabled": true,
+    "sessionPrefix": "cs-",
+    "defaultLayout": "main-horizontal"
+  },
+  "worktree": {
+    "basePath": "./worktrees",
+    "cleanupOnExit": true
+  }
+}
+```
+
+### Advanced Configuration
+
+```json filename="~/.claude-swarm/config.json"
+{
+  "github": {
+    "token": "your-github-token",
+    "baseUrl": "https://api.github.com",
+    "timeout": 30000,
+    "defaultRepo": "owner/repository",
+    "retryCount": 3
+  },
+  "tmux": {
+    "enabled": true,
+    "sessionPrefix": "cs-",
+    "defaultLayout": "main-horizontal",
+    "autoAttach": true,
+    "mouseSupport": true
+  },
+  "worktree": {
+    "basePath": "./worktrees",
+    "cleanupOnExit": true,
+    "preserveContext": ["*.md", "*.json", ".env.local"],
+    "maxWorktrees": 10
+  },
+  "agent": {
+    "contextPath": "~/.claude-swarm/contexts",
+    "preserveHistory": true,
+    "maxContextSize": "100MB"
+  },
+  "logging": {
+    "level": "info",
+    "file": "~/.claude-swarm/logs/claude-swarm.log"
+  }
+}
+```
+
+## CLI Reference Quick Guide
+
+### Essential Commands
+
+```bash
+# Project setup
+claude-swarm setup <project-name>
+
+# Work on tasks
+claude-swarm work-on-task --issue <number>
+claude-swarm work-on-task --branch <branch-name>
+
+# Management
+claude-swarm list
+claude-swarm status
+claude-swarm switch <worktree-name>
+
+# Cleanup
+claude-swarm cleanup --worktree <name>
+claude-swarm cleanup --all
+```
+
+### Advanced Commands
+
+```bash
+# Configuration
+claude-swarm config set <key> <value>
+claude-swarm config get <key>
+claude-swarm config list
+claude-swarm config reset
+
+# Debugging
+claude-swarm debug --worktree <name>
+claude-swarm debug --config
+claude-swarm debug --github
+
+# Tmux integration
+claude-swarm tmux list
+claude-swarm tmux attach <session>
+claude-swarm tmux kill <session>
+```
+
+:::tip[Try It Yourself]
+Copy any of these examples and try them in your own project! All code examples are tested and ready to use.
+:::
+
+## What's Next?
+
+Now that you've explored the playground:
+
+1. **🚀 [Get Started](/getting-started)** - Install and set up Claude Swarm
+2. **📚 [Learn Concepts](/concepts/architecture)** - Understand the architecture
+3. **🔧 [CLI Reference](/cli/overview)** - Master the command line interface
+4. **🎯 [Custom Workflows](/guides/custom-workflows)** - Build your own workflows
+
+:::info[Community]
+Join our [Discord](https://discord.gg/claude-swarm) to share your own examples and get help from the community!
+:::
