@@ -1,0 +1,48 @@
+# Architecture
+
+*Technical architecture and system design of Claude Codex*
+
+## System Overview
+
+Claude Codex implements a sophisticated multi-agent orchestration platform built on a clean 4-layer architecture with GitHub-native workflow coordination.
+
+## Architecture Principles
+
+### 4-Layer Design
+- **Commands**: CLI and UI entry points
+- **Workflows**: Orchestration of multi-agent operations  
+- **Core**: Reusable building blocks
+- **Shared**: Common utilities and infrastructure
+
+### Agent-First Design
+- Multi-agent coordination through GitHub primitives
+- Stateless agent design for clean separation
+- Local execution for privacy and performance
+
+### GitHub-Native Integration
+- Issues as work units
+- Pull requests as delivery mechanisms
+- Comments as communication channels
+
+## Core Components
+
+### [System Architecture](system-architecture.md)
+*High-level system design and component interaction*
+
+### [4-Layer Design](4-layer-design.md)
+*Detailed breakdown of the architectural layers*
+
+### [Agent Orchestration](agent-orchestration.md)
+*How agents coordinate and communicate*
+
+### [MCP Server](mcp-server.md)
+*Model Context Protocol server for agent coordination*
+
+### [Core Modules](core-modules.md)
+*Building blocks: git, worktree, github, tmux, claude, files*
+
+### [Database Schema](database-schema.md)
+*SQLite schema for instance and relationship management*
+
+### [Technology Stack](technology-stack.md)
+*Technologies, frameworks, and design decisions*
