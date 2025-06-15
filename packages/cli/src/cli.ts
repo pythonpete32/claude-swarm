@@ -1,11 +1,7 @@
 #!/usr/bin/env node
 
-import { main } from "@claude-codex/core";
+// Simple CLI placeholder - will be integrated with core later
+console.log("🚀 Claude Codex CLI");
+console.log("CLI integration with core package coming soon...");
 
-// Simple CLI wrapper around core functionality
-try {
-  main();
-} catch (error: any) {
-  console.error("Error:", error.message);
-  process.exit(1);
-}
+process.exit(0);
