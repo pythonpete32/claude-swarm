@@ -78,6 +78,23 @@
         "vitest": "^2.1.8",
       },
     },
+    "packages/mcp-review": {
+      "name": "@claude-codex/mcp-review",
+      "version": "0.1.0",
+      "bin": {
+        "mcp-review": "./dist/server.js"
+      },
+      "dependencies": {
+        "@claude-codex/core": "workspace:*",
+        "@claude-codex/workflows": "workspace:*",
+        "@modelcontextprotocol/sdk": "^1.12.3",
+      },
+      "devDependencies": {
+        "@biomejs/biome": "^1.9.4",
+        "@types/node": "^24.0.1",
+        "typescript": "^5.0.0",
+      },
+    },
     "packages/server": {
       "name": "@claude-codex/server",
       "version": "0.1.0",
@@ -266,6 +283,8 @@
     "@claude-codex/docs": ["@claude-codex/docs@workspace:packages/docs"],
 
     "@claude-codex/mcp-coding": ["@claude-codex/mcp-coding@workspace:packages/mcp-coding"],
+
+    "@claude-codex/mcp-review": ["@claude-codex/mcp-review@workspace:packages/mcp-review"],
 
     "@claude-codex/server": ["@claude-codex/server@workspace:packages/server"],
 

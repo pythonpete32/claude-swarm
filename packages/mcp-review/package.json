@@ -1,0 +1,28 @@
+{
+  "name": "@claude-codex/mcp-review",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "mcp-review": "./dist/server.js"
+  },
+  "scripts": {
+    "dev": "tsc --watch",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write ."
+  },
+  "dependencies": {
+    "@claude-codex/core": "workspace:*",
+    "@claude-codex/workflows": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.12.3"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "@types/node": "^24.0.1",
+    "typescript": "^5.0.0"
+  }
+}
