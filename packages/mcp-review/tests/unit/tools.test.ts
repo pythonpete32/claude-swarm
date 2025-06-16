@@ -2,16 +2,17 @@
  * Unit tests for MCP Review tools
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 
 describe("MCP Review Tools", () => {
   describe("Tool Validation", () => {
     it("should validate save_review tool arguments", () => {
       const validArgs = {
-        review: "The code looks good. Authentication implementation is secure and follows best practices.",
-        decision: "approve" as const
+        review:
+          "The code looks good. Authentication implementation is secure and follows best practices.",
+        decision: "approve" as const,
       };
-      
+
       expect(validArgs).toHaveProperty("review");
       expect(validArgs).toHaveProperty("decision");
       expect(typeof validArgs.review).toBe("string");
@@ -23,9 +24,9 @@ describe("MCP Review Tools", () => {
       const validArgs = {
         title: "Add user authentication feature",
         description: "This PR implements secure user authentication with proper validation.",
-        draft: false
+        draft: false,
       };
-      
+
       expect(validArgs).toHaveProperty("title");
       expect(validArgs).toHaveProperty("description");
       expect(typeof validArgs.title).toBe("string");
@@ -35,13 +36,13 @@ describe("MCP Review Tools", () => {
 
     it("should reject invalid decision values", () => {
       const invalidDecisions = ["accept", "reject", "maybe", ""];
-      
+
       for (const decision of invalidDecisions) {
-        const args = {
+        const _args = {
           review: "Some review text",
-          decision: decision
+          decision: decision,
         };
-        
+
         expect(["approve", "request_changes"]).not.toContain(decision);
       }
     });
@@ -50,13 +51,20 @@ describe("MCP Review Tools", () => {
   describe("Context Parsing", () => {
     it("should parse review agent context correctly", () => {
       const testArgs = [
-        "node", "server.js",
-        "--agent-id", "review-test-123",
-        "--workspace", "/test/review-workspace",
-        "--parent-instance-id", "coding-agent-456",
-        "--parent-tmux-session", "coding-session-456",
-        "--branch", "review/feature-test",
-        "--session", "review-session-123"
+        "node",
+        "server.js",
+        "--agent-id",
+        "review-test-123",
+        "--workspace",
+        "/test/review-workspace",
+        "--parent-instance-id",
+        "coding-agent-456",
+        "--parent-tmux-session",
+        "coding-session-456",
+        "--branch",
+        "review/feature-test",
+        "--session",
+        "review-session-123",
       ];
 
       const parseArgs = (args: string[]) => {
@@ -72,7 +80,7 @@ describe("MCP Review Tools", () => {
       };
 
       const parsed = parseArgs(testArgs);
-      
+
       expect(parsed["agent-id"]).toBe("review-test-123");
       expect(parsed.workspace).toBe("/test/review-workspace");
       expect(parsed["parent-instance-id"]).toBe("coding-agent-456");
@@ -84,15 +92,15 @@ describe("MCP Review Tools", () => {
     it("should validate required review context", () => {
       const minimalValidContext = {
         "agent-id": "review-123",
-        "workspace": "/test/workspace",
+        workspace: "/test/workspace",
         "parent-instance-id": "parent-456",
         "parent-tmux-session": "parent-session",
-        "branch": "review/test",
-        "session": "review-session"
+        branch: "review/test",
+        session: "review-session",
       };
 
       const required = ["agent-id", "workspace", "parent-instance-id", "parent-tmux-session"];
-      
+
       for (const key of required) {
         expect(minimalValidContext[key as keyof typeof minimalValidContext]).toBeDefined();
         expect(minimalValidContext[key as keyof typeof minimalValidContext]).not.toBe("");
@@ -104,7 +112,7 @@ describe("MCP Review Tools", () => {
     it("should format approval decisions correctly", () => {
       const approvalReview = {
         review: "Code quality is excellent. All tests pass. Ready for production.",
-        decision: "approve" as const
+        decision: "approve" as const,
       };
 
       const expectedMessage = `## 🔍 Code Review Complete
@@ -126,7 +134,7 @@ The review agent has completed its analysis. You may now create a pull request.`
     it("should format change request decisions correctly", () => {
       const changeRequestReview = {
         review: "Found security vulnerability in authentication. Please fix before merging.",
-        decision: "request_changes" as const
+        decision: "request_changes" as const,
       };
 
       const expectedMessage = `## 🔍 Code Review Complete
@@ -152,9 +160,9 @@ The review agent has completed its analysis. Please address the feedback above a
         content: [
           {
             type: "text",
-            text: "Review saved successfully and feedback injected into coding agent session"
-          }
-        ]
+            text: "Review saved successfully and feedback injected into coding agent session",
+          },
+        ],
       };
 
       expect(successResponse.content).toHaveLength(1);
@@ -168,10 +176,10 @@ The review agent has completed its analysis. Please address the feedback above a
         content: [
           {
             type: "text",
-            text: "Error: Invalid arguments for save_review tool"
-          }
+            text: "Error: Invalid arguments for save_review tool",
+          },
         ],
-        isError: true
+        isError: true,
       };
 
       expect(errorResponse.content).toHaveLength(1);
