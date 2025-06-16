@@ -89,24 +89,17 @@
       "indexes": {
         "idx_github_issues_state": {
           "name": "idx_github_issues_state",
-          "columns": [
-            "state"
-          ],
+          "columns": ["state"],
           "isUnique": false
         },
         "idx_github_issues_synced_at": {
           "name": "idx_github_issues_synced_at",
-          "columns": [
-            "synced_at"
-          ],
+          "columns": ["synced_at"],
           "isUnique": false
         },
         "idx_github_issues_repo": {
           "name": "idx_github_issues_repo",
-          "columns": [
-            "repo_owner",
-            "repo_name"
-          ],
+          "columns": ["repo_owner", "repo_name"],
           "isUnique": false
         }
       },
@@ -258,30 +251,22 @@
       "indexes": {
         "idx_instances_status": {
           "name": "idx_instances_status",
-          "columns": [
-            "status"
-          ],
+          "columns": ["status"],
           "isUnique": false
         },
         "idx_instances_last_activity": {
           "name": "idx_instances_last_activity",
-          "columns": [
-            "last_activity"
-          ],
+          "columns": ["last_activity"],
           "isUnique": false
         },
         "idx_instances_issue_number": {
           "name": "idx_instances_issue_number",
-          "columns": [
-            "issue_number"
-          ],
+          "columns": ["issue_number"],
           "isUnique": false
         },
         "idx_instances_type": {
           "name": "idx_instances_type",
-          "columns": [
-            "type"
-          ],
+          "columns": ["type"],
           "isUnique": false
         }
       },
@@ -369,30 +354,22 @@
       "indexes": {
         "idx_mcp_events_instance_id": {
           "name": "idx_mcp_events_instance_id",
-          "columns": [
-            "instance_id"
-          ],
+          "columns": ["instance_id"],
           "isUnique": false
         },
         "idx_mcp_events_timestamp": {
           "name": "idx_mcp_events_timestamp",
-          "columns": [
-            "timestamp"
-          ],
+          "columns": ["timestamp"],
           "isUnique": false
         },
         "idx_mcp_events_tool_name": {
           "name": "idx_mcp_events_tool_name",
-          "columns": [
-            "tool_name"
-          ],
+          "columns": ["tool_name"],
           "isUnique": false
         },
         "idx_mcp_events_success": {
           "name": "idx_mcp_events_success",
-          "columns": [
-            "success"
-          ],
+          "columns": ["success"],
           "isUnique": false
         }
       },
@@ -459,32 +436,22 @@
       "indexes": {
         "idx_relationships_parent": {
           "name": "idx_relationships_parent",
-          "columns": [
-            "parent_instance"
-          ],
+          "columns": ["parent_instance"],
           "isUnique": false
         },
         "idx_relationships_child": {
           "name": "idx_relationships_child",
-          "columns": [
-            "child_instance"
-          ],
+          "columns": ["child_instance"],
           "isUnique": false
         },
         "idx_relationships_type": {
           "name": "idx_relationships_type",
-          "columns": [
-            "relationship_type"
-          ],
+          "columns": ["relationship_type"],
           "isUnique": false
         },
         "instance_relationships_parent_instance_child_instance_relationship_type_unique": {
           "name": "instance_relationships_parent_instance_child_instance_relationship_type_unique",
-          "columns": [
-            "parent_instance",
-            "child_instance",
-            "relationship_type"
-          ],
+          "columns": ["parent_instance", "child_instance", "relationship_type"],
           "isUnique": true
         }
       },
