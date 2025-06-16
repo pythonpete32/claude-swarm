@@ -281,7 +281,7 @@ describe("Workflow Lifecycle Integration", () => {
 
       // Verify resource cleanup
       expect(mockCoreFunctions.terminateClaudeSession).toHaveBeenCalledWith(
-        reviewInstance.claude_pid!.toString()
+        reviewInstance.claude_pid?.toString()
       );
       expect(mockCoreFunctions.killSession).toHaveBeenCalledWith(reviewInstance.tmux_session);
       expect(mockCoreFunctions.removeWorktree).toHaveBeenCalledWith(reviewInstance.worktree_path);

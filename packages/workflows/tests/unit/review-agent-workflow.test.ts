@@ -232,9 +232,10 @@ describe("ReviewAgentWorkflow", () => {
         expect.stringContaining("❌ CHANGES REQUESTED")
       );
 
-      const reviewMetadata = JSON.parse(
-        (mockDb.updateRelationship as any).mock.calls[0][1].metadata
-      );
+      const updateRelationshipMock = mockDb.updateRelationship as unknown as {
+        mock: { calls: [number, { metadata: string }][] };
+      };
+      const reviewMetadata = JSON.parse(updateRelationshipMock.mock.calls[0][1].metadata);
       expect(reviewMetadata).toEqual({
         review,
         decision,
@@ -475,8 +476,8 @@ describe("ReviewAgentWorkflow", () => {
       const parentInstance = { ...TEST_INSTANCES.coding, status: "waiting_review" as const };
       mockDatabase.getInstance.mockResolvedValue(parentInstance);
 
-      let errorCallback: Function;
-      let exitCallback: Function;
+      let errorCallback: (...args: unknown[]) => void;
+      let exitCallback: (...args: unknown[]) => void;
 
       mockChildProcess.on = vi.fn().mockImplementation((event, callback) => {
         if (event === "error") errorCallback = callback;

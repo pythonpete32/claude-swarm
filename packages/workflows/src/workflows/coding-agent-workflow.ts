@@ -108,11 +108,8 @@ export class CodingAgentWorkflow implements BaseWorkflow<CodingAgentConfig, Codi
         branch_name: worktree.branch,
         claude_pid: claudeSession.session.pid, // Use core's claude_pid field
         last_activity: new Date(),
-        // Type assertion needed until schema types are regenerated
-        ...({
-          prompt_used: builtPrompt,
-          prompt_context: JSON.stringify(promptData),
-        } as any),
+        prompt_used: builtPrompt,
+        prompt_context: JSON.stringify(promptData),
       });
 
       // 8. Create initial state

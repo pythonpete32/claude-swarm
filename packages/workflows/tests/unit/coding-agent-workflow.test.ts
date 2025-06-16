@@ -147,7 +147,7 @@ describe("CodingAgentWorkflow", () => {
       const config1 = { ...TEST_CODING_CONFIG };
       const config2 = {
         ...TEST_CODING_CONFIG,
-        issue: { ...TEST_CODING_CONFIG.issue!, number: 456 },
+        issue: { ...TEST_CODING_CONFIG.issue, number: 456 },
       };
 
       // Act

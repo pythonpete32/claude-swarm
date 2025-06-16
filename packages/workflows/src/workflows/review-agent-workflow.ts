@@ -97,8 +97,8 @@ export class ReviewAgentWorkflow implements BaseWorkflow<ReviewAgentConfig, Revi
 
       // 6. Get original prompt context from parent instance (already retrieved above)
 
-      const originalPromptData = (parentInstance as any).prompt_context
-        ? (JSON.parse((parentInstance as any).prompt_context) as PromptData)
+      const originalPromptData = parentInstance.prompt_context
+        ? (JSON.parse(parentInstance.prompt_context) as PromptData)
         : { baseInstructions: "No original task context available", customInstructions: "" };
 
       // 7. Build review prompt with original context
@@ -131,14 +131,11 @@ export class ReviewAgentWorkflow implements BaseWorkflow<ReviewAgentConfig, Revi
         branch_name: reviewWorktree.branch,
         claude_pid: claudeSession.session.pid, // Use core's claude_pid field
         last_activity: new Date(),
-        // Type assertion needed until schema types are regenerated
-        ...({
-          prompt_used: reviewPrompt,
-          prompt_context: JSON.stringify({
-            originalTask: originalPromptData,
-            reviewCriteria: config.reviewPrompt,
-          }),
-        } as any),
+        prompt_used: reviewPrompt,
+        prompt_context: JSON.stringify({
+          originalTask: originalPromptData,
+          reviewCriteria: config.reviewPrompt,
+        }),
       });
 
       // 11. Create relationship tracking

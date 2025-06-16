@@ -22,13 +22,15 @@ export const createMockDatabase = (): DatabaseInterface => ({
 
 // Mock Child Process
 export const createMockChildProcess = (): ChildProcess => {
-  const mockOn = vi.fn().mockImplementation((event: string, callback: Function) => {
-    // Immediately trigger spawn event for tests that expect it
-    if (event === "spawn") {
-      setImmediate(callback);
-    }
-    return mockProcess;
-  });
+  const mockOn = vi
+    .fn()
+    .mockImplementation((event: string, callback: (...args: unknown[]) => void) => {
+      // Immediately trigger spawn event for tests that expect it
+      if (event === "spawn") {
+        setImmediate(callback);
+      }
+      return mockProcess;
+    });
 
   const mockProcess = {
     pid: 12345,
@@ -190,17 +192,19 @@ export const createTestDatabase = (
   const relationships = [...initialRelationships];
 
   // Mock createInstance to actually add to instances array
-  mockDb.createInstance = vi.fn().mockImplementation((newInstance: any) => {
-    instances.push({
-      ...newInstance,
-      created_at: new Date(),
-      last_activity: new Date(),
+  mockDb.createInstance = vi
+    .fn()
+    .mockImplementation((newInstance: Omit<Instance, "created_at" | "last_activity">) => {
+      instances.push({
+        ...newInstance,
+        created_at: new Date(),
+        last_activity: new Date(),
+      });
+      return Promise.resolve(undefined);
     });
-    return Promise.resolve(undefined);
-  });
 
   // Mock updateInstance to actually update the instances array
-  mockDb.updateInstance = vi.fn().mockImplementation((id: string, updates: any) => {
+  mockDb.updateInstance = vi.fn().mockImplementation((id: string, updates: Partial<Instance>) => {
     const index = instances.findIndex((i) => i.id === id);
     if (index !== -1) {
       instances[index] = { ...instances[index], ...updates, last_activity: new Date() };
@@ -215,14 +219,16 @@ export const createTestDatabase = (
   });
 
   // Mock createRelationship to actually add to relationships array
-  mockDb.createRelationship = vi.fn().mockImplementation((newRelationship: any) => {
-    relationships.push({
-      ...newRelationship,
-      id: `rel-${relationships.length + 1}`,
-      created_at: new Date(),
+  mockDb.createRelationship = vi
+    .fn()
+    .mockImplementation((newRelationship: Omit<InstanceRelationship, "id" | "created_at">) => {
+      relationships.push({
+        ...newRelationship,
+        id: `rel-${relationships.length + 1}`,
+        created_at: new Date(),
+      });
+      return Promise.resolve(undefined);
     });
-    return Promise.resolve(undefined);
-  });
 
   // Setup getRelationships responses
   mockDb.getRelationships = vi.fn().mockImplementation((instanceId: string) => {
