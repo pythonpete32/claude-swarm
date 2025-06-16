@@ -1,0 +1,30 @@
+{
+  "name": "@claude-codex/workflows",
+  "version": "0.1.0",
+  "description": "Agent lifecycle orchestration for Claude Codex",
+  "module": "src/index.ts",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "dev": "bun --watch src/index.ts",
+    "test": "bun test",
+    "test:run": "bun test --run",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check .",
+    "lint:fix": "biome check --fix ."
+  },
+  "dependencies": {
+    "@claude-codex/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@vitest/coverage-v8": "^3.2.3",
+    "vitest": "^3.2.3"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "files": ["dist/**/*", "src/**/*"]
+}

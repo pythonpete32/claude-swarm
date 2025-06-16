@@ -1,0 +1,33 @@
+{
+  "name": "@claude-codex/mcp-coding",
+  "version": "0.1.0",
+  "description": "MCP server for coding agents",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "mcp-coding": "dist/server.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "start": "node dist/server.js",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check src/",
+    "lint:fix": "biome check --write src/"
+  },
+  "dependencies": {
+    "@claude-codex/core": "workspace:*",
+    "@claude-codex/workflows": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.0.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  },
+  "files": [
+    "dist"
+  ]
+}
