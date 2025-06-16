@@ -2,8 +2,8 @@
  * Save Review Tool - Saves review to database and injects into coding agent
  */
 
-import { ReviewAgentWorkflow } from "@claude-codex/workflows";
 import { getDatabase } from "@claude-codex/core";
+import { ReviewAgentWorkflow } from "@claude-codex/workflows";
 import type { MCPContext, SaveReviewInput, SaveReviewOutput } from "../types.js";
 
 export async function saveReviewTool(
@@ -14,7 +14,7 @@ export async function saveReviewTool(
     // Get database and review workflow
     const database = await getDatabase();
     const reviewWorkflow = new ReviewAgentWorkflow(database);
-    
+
     // Call the saveReview method which handles:
     // 1. Saving review to database
     // 2. Injecting review into parent's TMUX session
@@ -35,9 +35,10 @@ The review has been:
 - Injected into the coding agent's session
 - Parent agent has been notified
 
-${args.decision === "approve" 
-  ? "The coding agent can now proceed to create a pull request." 
-  : "The coding agent should address the feedback and can request another review when ready."
+${
+  args.decision === "approve"
+    ? "The coding agent can now proceed to create a pull request."
+    : "The coding agent should address the feedback and can request another review when ready."
 }`,
       decision: args.decision,
       parentInstanceId: context.parentInstanceId,

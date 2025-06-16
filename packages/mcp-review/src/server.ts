@@ -2,7 +2,7 @@
 
 /**
  * MCP Review Server - Tools for review agents
- * 
+ *
  * Provides tools for review agents to:
  * - save_review: Save review feedback and inject into coding agent
  * - create_pull_request: Create GitHub PR when code is approved
@@ -11,9 +11,9 @@
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
-import { saveReviewTool } from "./tools/save-review.js";
 import { createPullRequestTool } from "./tools/create-pr.js";
-import type { MCPContext, SaveReviewInput, CreatePRInput } from "./types.js";
+import { saveReviewTool } from "./tools/save-review.js";
+import type { CreatePRInput, MCPContext, SaveReviewInput } from "./types.js";
 
 // Parse command line arguments to get agent context
 const args = process.argv.slice(2);

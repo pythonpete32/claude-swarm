@@ -9,8 +9,8 @@
   "scripts": {
     "build": "tsc",
     "dev": "bun --watch src/index.ts",
-    "test": "bun test",
-    "test:run": "bun test --run",
+    "test": "vitest",
+    "test:run": "vitest run",
     "typecheck": "tsc --noEmit",
     "lint": "biome check .",
     "lint:fix": "biome check --fix ."

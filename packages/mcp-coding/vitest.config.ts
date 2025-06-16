@@ -9,7 +9,7 @@ export default defineConfig({
       provider: "v8",
       reporter: ["text", "html"],
       thresholds: {
-        functions: 80, // Lower thresholds for now
+        functions: 80,
         branches: 80,
         lines: 80,
         statements: 80,

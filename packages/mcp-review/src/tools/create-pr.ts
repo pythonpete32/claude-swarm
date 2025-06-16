@@ -2,9 +2,9 @@
  * Create PR Tool - Creates GitHub pull request for review agent
  */
 
-import { ReviewAgentWorkflow } from "@claude-codex/workflows";
 import { getDatabase } from "@claude-codex/core";
-import type { MCPContext, CreatePRInput, CreatePROutput } from "../types.js";
+import { ReviewAgentWorkflow } from "@claude-codex/workflows";
+import type { CreatePRInput, CreatePROutput, MCPContext } from "../types.js";
 
 export async function createPullRequestTool(
   args: CreatePRInput,
@@ -14,13 +14,13 @@ export async function createPullRequestTool(
     // Get database and review workflow
     const database = await getDatabase();
     const reviewWorkflow = new ReviewAgentWorkflow(database);
-    
+
     // Get review instance to get branch information
     const reviewInstance = await database.getInstance(context.agentId);
     if (!reviewInstance) {
       throw new Error(`Review instance ${context.agentId} not found`);
     }
-    
+
     // Create pull request configuration with proper head/base
     const prConfig = {
       title: args.title,
@@ -29,10 +29,10 @@ export async function createPullRequestTool(
       base: reviewInstance.base_branch || "main", // The target branch
       draft: args.draft || false,
     };
-    
+
     // Use the existing pushToGithub method
     const prUrl = await reviewWorkflow.pushToGithub(context.agentId, prConfig);
-    
+
     // Extract PR number from URL (assuming GitHub URL format)
     const prNumber = extractPRNumber(prUrl);
 
