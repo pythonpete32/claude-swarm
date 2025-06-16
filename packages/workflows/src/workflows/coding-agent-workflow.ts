@@ -4,6 +4,7 @@
 
 import { type ChildProcess, spawn } from "node:child_process";
 import { ErrorFactory, WORKFLOW_ERROR_CODES } from "../errors/workflow-errors.js";
+import { buildCodingPrompt, createPromptDataFromConfig } from "../prompts/prompt-builder.js";
 import type { CodingAgentState } from "../types/agent-states.js";
 import type { DatabaseInterface } from "../types/dependencies.js";
 import {
@@ -12,6 +13,7 @@ import {
   killSession,
   launchClaudeSession,
   removeWorktree,
+  sendKeys,
   terminateClaudeSession,
 } from "../types/dependencies.js";
 import type { CodingAgentConfig } from "../types/workflow-config.js";
@@ -29,7 +31,8 @@ export class CodingAgentWorkflow implements BaseWorkflow<CodingAgentConfig, Codi
     private createTmuxFunc = createTmuxSession,
     private killSessionFunc = killSession,
     private launchClaudeFunc = launchClaudeSession,
-    private terminateClaudeFunc = terminateClaudeSession
+    private terminateClaudeFunc = terminateClaudeSession,
+    private sendKeysFunc = sendKeys
   ) {}
 
   async execute(config: CodingAgentConfig): Promise<WorkflowExecution<CodingAgentState>> {
@@ -63,7 +66,11 @@ export class CodingAgentWorkflow implements BaseWorkflow<CodingAgentConfig, Codi
         ...config.tmuxOptions,
       });
 
-      // 3. Launch MCP server for this coding agent
+      // 3. Build prompt from configuration
+      const promptData = createPromptDataFromConfig(config);
+      const builtPrompt = buildCodingPrompt(promptData);
+
+      // 4. Launch MCP server for this coding agent
       await this.launchMCPServer({
         agentId: instanceId,
         workspace: worktree.path,
@@ -72,19 +79,26 @@ export class CodingAgentWorkflow implements BaseWorkflow<CodingAgentConfig, Codi
         session: tmuxSession.name,
       });
 
+      // 5. Launch Claude session (no prompt data in env vars)
       const claudeSession = await this.launchClaudeFunc({
         workspacePath: worktree.path,
         environmentVars: {
           INSTANCE_ID: instanceId,
-          SYSTEM_PROMPT: config.systemPrompt || "",
           MCP_SERVER_TYPE: "coding",
           MCP_AGENT_ID: instanceId,
+          // Merge in any additional env vars from config
           ...config.claudeOptions?.environmentVars,
         },
-        ...config.claudeOptions,
+        // Spread other claudeOptions but not environmentVars
+        ...config.claudeOptions ? 
+          Object.fromEntries(Object.entries(config.claudeOptions).filter(([key]) => key !== 'environmentVars')) 
+          : {},
       });
 
-      // 4. Update database with resources
+      // 6. Inject prompt via TMUX
+      await this.sendKeysFunc(tmuxSession.name, builtPrompt);
+
+      // 7. Update database with resources and prompt data
       await this.database.updateInstance(instanceId, {
         status: "started", // Core status - agent is started and working
         worktree_path: worktree.path,
@@ -92,9 +106,14 @@ export class CodingAgentWorkflow implements BaseWorkflow<CodingAgentConfig, Codi
         branch_name: worktree.branch,
         claude_pid: claudeSession.session.pid, // Use core's claude_pid field
         last_activity: new Date(),
+        // Type assertion needed until schema types are regenerated
+        ...({
+          prompt_used: builtPrompt,
+          prompt_context: JSON.stringify(promptData),
+        } as any),
       });
 
-      // 5. Create initial state
+      // 8. Create initial state
       const initialState: CodingAgentState = {
         phase: "working",
         reviewCount: 0,

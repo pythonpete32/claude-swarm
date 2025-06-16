@@ -4,6 +4,7 @@
 
 import { type ChildProcess, spawn } from "node:child_process";
 import { ErrorFactory, WORKFLOW_ERROR_CODES, WorkflowError } from "../errors/workflow-errors.js";
+import { buildReviewPrompt, type PromptData } from "../prompts/prompt-builder.js";
 import type { ReviewAgentState } from "../types/agent-states.js";
 import type { DatabaseInterface } from "../types/dependencies.js";
 import {
@@ -32,7 +33,8 @@ export class ReviewAgentWorkflow implements BaseWorkflow<ReviewAgentConfig, Revi
     private killSessionFunc = killSession,
     private launchClaudeFunc = launchClaudeSession,
     private terminateClaudeFunc = terminateClaudeSession,
-    private createPullRequestFunc = createPullRequest
+    private createPullRequestFunc = createPullRequest,
+    private sendKeysFunc = sendKeys
   ) {}
 
   async execute(config: ReviewAgentConfig): Promise<WorkflowExecution<ReviewAgentState>> {
@@ -93,18 +95,35 @@ export class ReviewAgentWorkflow implements BaseWorkflow<ReviewAgentConfig, Revi
         session: tmuxSession.name,
       });
 
-      // 6. Launch review-focused Claude session
+      // 6. Get original prompt context from parent instance (already retrieved above)
+
+      const originalPromptData = (parentInstance as any).prompt_context 
+        ? JSON.parse((parentInstance as any).prompt_context) as PromptData
+        : { baseInstructions: "No original task context available", customInstructions: "" };
+
+      // 7. Build review prompt with original context
+      const reviewPrompt = buildReviewPrompt({
+        baseInstructions: this.getDefaultReviewPrompt(),
+        originalTask: originalPromptData,
+        reviewCriteria: config.reviewPrompt,
+      });
+
+      // 8. Launch review-focused Claude session
       const claudeSession = await this.launchClaudeFunc({
         workspacePath: reviewWorktree.path,
         environmentVars: {
           INSTANCE_ID: reviewInstanceId,
           PARENT_INSTANCE_ID: config.parentInstanceId,
-          REVIEW_MODE: "true",
-          REVIEW_PROMPT: config.reviewPrompt || this.getDefaultReviewPrompt(),
+          MCP_SERVER_TYPE: "review",
+          MCP_AGENT_ID: reviewInstanceId,
+          // Only technical config in env vars, no prompt data
         },
       });
 
-      // 7. Update database with resources
+      // 9. Inject review prompt via TMUX
+      await this.sendKeysFunc(tmuxSession.name, reviewPrompt);
+
+      // 10. Update database with resources and prompt data
       await this.database.updateInstance(reviewInstanceId, {
         status: "started", // Use core's status - agent is started and working
         worktree_path: reviewWorktree.path,
@@ -112,9 +131,14 @@ export class ReviewAgentWorkflow implements BaseWorkflow<ReviewAgentConfig, Revi
         branch_name: reviewWorktree.branch,
         claude_pid: claudeSession.session.pid, // Use core's claude_pid field
         last_activity: new Date(),
+        // Type assertion needed until schema types are regenerated
+        ...({
+          prompt_used: reviewPrompt,
+          prompt_context: JSON.stringify({ originalTask: originalPromptData, reviewCriteria: config.reviewPrompt }),
+        } as any),
       });
 
-      // 7. Create relationship tracking
+      // 11. Create relationship tracking
       await this.database.createRelationship({
         parent_instance: config.parentInstanceId,
         child_instance: reviewInstanceId,
@@ -123,7 +147,7 @@ export class ReviewAgentWorkflow implements BaseWorkflow<ReviewAgentConfig, Revi
         metadata: null,
       });
 
-      // 8. Create initial state
+      // 12. Create initial state
       const initialState: ReviewAgentState = {
         phase: "working",
         parentInstanceId: config.parentInstanceId,

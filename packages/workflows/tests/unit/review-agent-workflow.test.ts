@@ -40,7 +40,8 @@ describe("ReviewAgentWorkflow", () => {
       mockCoreFunctions.killSession,
       mockCoreFunctions.launchClaudeSession,
       mockCoreFunctions.terminateClaudeSession,
-      mockCoreFunctions.createPullRequest
+      mockCoreFunctions.createPullRequest,
+      mockCoreFunctions.sendKeys
     );
   });
 
@@ -100,10 +101,18 @@ describe("ReviewAgentWorkflow", () => {
       expect(mockCoreFunctions.launchClaudeSession).toHaveBeenCalledWith(
         expect.objectContaining({
           environmentVars: expect.objectContaining({
-            REVIEW_MODE: "true",
+            INSTANCE_ID: expect.any(String),
             PARENT_INSTANCE_ID: config.parentInstanceId,
+            MCP_SERVER_TYPE: "review",
+            MCP_AGENT_ID: expect.any(String),
           }),
         })
+      );
+
+      // Check that review prompt was injected via sendKeys
+      expect(mockCoreFunctions.sendKeys).toHaveBeenCalledWith(
+        expect.any(String), // tmux session name
+        expect.stringContaining("code review agent") // prompt content
       );
     });
 

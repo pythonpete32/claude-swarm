@@ -38,7 +38,8 @@ describe("CodingAgentWorkflow", () => {
       mockCoreFunctions.createTmuxSession,
       mockCoreFunctions.killSession,
       mockCoreFunctions.launchClaudeSession,
-      mockCoreFunctions.terminateClaudeSession
+      mockCoreFunctions.terminateClaudeSession,
+      mockCoreFunctions.sendKeys
     );
   });
 
@@ -108,12 +109,18 @@ describe("CodingAgentWorkflow", () => {
           workspacePath: "/test/workspace/test-worktree",
           environmentVars: expect.objectContaining({
             INSTANCE_ID: expect.any(String),
-            SYSTEM_PROMPT: "You are a coding assistant.",
             MCP_SERVER_TYPE: "coding",
             MCP_AGENT_ID: expect.any(String),
+            // Config-specific environment variables are also spread in
             ISSUE_NUMBER: "123",
           }),
         })
+      );
+
+      // Check that prompt was injected via sendKeys
+      expect(mockCoreFunctions.sendKeys).toHaveBeenCalledWith(
+        expect.any(String), // tmux session name
+        expect.stringContaining("You are a coding assistant") // prompt content
       );
     });
 

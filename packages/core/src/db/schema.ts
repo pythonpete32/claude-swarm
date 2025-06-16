@@ -34,8 +34,10 @@ export const instancesTable = sqliteTable(
     terminated_at: integer({ mode: "timestamp" }),
     last_activity: integer({ mode: "timestamp" }).default(sql`(unixepoch())`).notNull(),
 
-    // Configuration
-    system_prompt: text(),
+    // Configuration (deprecated system_prompt, replaced by prompt_used)
+    system_prompt: text(), // Legacy field - kept for backwards compatibility
+    prompt_used: text(), // Full prompt string sent to Claude
+    prompt_context: text(), // JSON string of prompt data
     agent_number: integer().default(1).notNull(),
   },
   (table) => ({
