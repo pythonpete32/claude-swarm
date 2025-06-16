@@ -15,13 +15,5 @@ export default defineConfig({
         statements: 80,
       },
     },
-    // Skip setup file that has problematic MCP SDK imports
-    // setupFiles: ["./tests/fixtures/setup.ts"],
-  },
-  resolve: {
-    alias: {
-      // Work around MCP SDK import issues in tests
-      "@modelcontextprotocol/sdk": false,
-    },
   },
 });
