@@ -4,11 +4,11 @@
 
 export interface MCPContext {
   agentId: string;
-  agentType: "coding";
+  agentType?: "coding";
   workspace: string;
-  issue?: string;
   branch: string;
   session: string;
+  issue?: string;
 }
 
 export interface RequestReviewInput {

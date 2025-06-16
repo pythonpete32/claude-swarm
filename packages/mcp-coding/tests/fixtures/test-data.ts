@@ -3,7 +3,7 @@
  */
 
 import { vi } from "vitest";
-import type { MCPContext } from "../../../workflows/src/types/mcp-context.js";
+import type { MCPContext } from "../../src/types.js";
 
 // Mock MCP Context
 export const createMockMCPContext = (overrides: Partial<MCPContext> = {}): MCPContext => ({
@@ -42,9 +42,7 @@ export const TEST_REQUEST_REVIEW_INPUT = {
 // Test Create PR Input
 export const TEST_CREATE_PR_INPUT = {
   title: "Add OAuth2 authentication module",
-  body: "Implements OAuth2 authentication with proper error handling and session management",
-  head: "feature/oauth2-auth",
-  base: "main",
+  description: "Implements OAuth2 authentication with proper error handling and session management",
   draft: false,
 };
 
@@ -55,6 +53,10 @@ export const createMockWorkflowFunctions = () => ({
       id: "review-instance-123",
       type: "review",
       status: "started",
+      resources: {
+        worktreePath: "/test/review-workspace",
+        sessionName: "review-session-123",
+      },
     }),
   })),
   createPullRequest: vi.fn().mockResolvedValue({

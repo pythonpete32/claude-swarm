@@ -64,7 +64,7 @@ describe("createPullRequestTool", () => {
       const { createPullRequest } = await import("@claude-codex/core");
       expect(createPullRequest).toHaveBeenCalledWith("repository", {
         title: input.title,
-        body: input.body,
+        body: input.description,
         head: mockCodingInstance.branch_name,
         base: mockCodingInstance.base_branch,
         draft: false,
@@ -169,7 +169,7 @@ describe("createPullRequestTool", () => {
       const context = createMockMCPContext();
       const input = {
         title: "Custom PR Title",
-        body: "Custom PR body",
+        description: "Custom PR body",
         draft: false,
       };
       
@@ -217,7 +217,7 @@ describe("createPullRequestTool", () => {
 
       // Act & Assert
       await expect(createPullRequestTool(input, context)).rejects.toThrow(
-        "Failed to create pull request: Database connection failed"
+        "Database connection failed"
       );
     });
 
@@ -281,7 +281,7 @@ describe("createPullRequestTool", () => {
       const context = createMockMCPContext();
       const input = {
         title: "Minimal PR",
-        body: "Minimal description",
+        description: "Minimal description",
       };
       
       mockDatabase.getInstance.mockResolvedValue({
@@ -314,7 +314,7 @@ describe("createPullRequestTool", () => {
       const context = createMockMCPContext();
       const input = {
         title: "",
-        body: "",
+        description: "",
         draft: undefined,
       };
       

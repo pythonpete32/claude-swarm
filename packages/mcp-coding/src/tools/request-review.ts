@@ -51,6 +51,8 @@ The review agent will analyze your changes and either:
 You'll receive feedback directly in this session when the review is complete.`,
     };
   } catch (error) {
-    throw new Error(`Failed to request review: ${(error as Error).message}`);
+    throw new Error(
+      `Failed to request review: ${error instanceof Error ? error.message : String(error)}`,
+    );
   }
 }

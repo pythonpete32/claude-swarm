@@ -57,6 +57,8 @@ Work completed! 🎉`,
       last_activity: new Date(),
     });
 
-    throw new Error(`Failed to create pull request: ${(error as Error).message}`);
+    throw new Error(
+      `Failed to create pull request: ${error instanceof Error ? error.message : String(error)}`,
+    );
   }
 }

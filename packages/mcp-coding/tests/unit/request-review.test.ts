@@ -23,18 +23,32 @@ vi.mock("@claude-codex/workflows", () => ({
 
 describe("requestReviewTool", () => {
   let mockDatabase: ReturnType<typeof createMockDatabase>;
-  let mockWorkflowFunctions: ReturnType<typeof createMockWorkflowFunctions>;
+  let mockWorkflowInstance: {
+    execute: ReturnType<typeof vi.fn>;
+  };
 
   beforeEach(async () => {
     mockDatabase = createMockDatabase();
-    mockWorkflowFunctions = createMockWorkflowFunctions();
+    
+    // Create a consistent mock workflow instance
+    mockWorkflowInstance = {
+      execute: vi.fn().mockResolvedValue({
+        id: "review-instance-123",
+        type: "review",
+        status: "started",
+        resources: {
+          worktreePath: "/test/review-workspace",
+          sessionName: "review-session-123",
+        },
+      }),
+    };
 
     // Setup mocks
     const { getDatabase } = await import("@claude-codex/core");
     const { ReviewAgentWorkflow } = await import("@claude-codex/workflows");
 
     vi.mocked(getDatabase).mockResolvedValue(mockDatabase);
-    vi.mocked(ReviewAgentWorkflow).mockImplementation(() => mockWorkflowFunctions.ReviewAgentWorkflow());
+    vi.mocked(ReviewAgentWorkflow).mockImplementation(() => mockWorkflowInstance);
   });
 
   describe("successful review request", () => {
@@ -64,7 +78,6 @@ describe("requestReviewTool", () => {
 
       expect(mockDatabase.getInstance).toHaveBeenCalledWith(context.agentId);
 
-      const mockWorkflowInstance = mockWorkflowFunctions.ReviewAgentWorkflow();
       expect(mockWorkflowInstance.execute).toHaveBeenCalledWith({
         parentInstanceId: context.agentId,
         parentTmuxSession: context.session,
@@ -95,7 +108,6 @@ describe("requestReviewTool", () => {
       // Assert
       expect(result).toBeDefined();
       
-      const mockWorkflowInstance = mockWorkflowFunctions.ReviewAgentWorkflow();
       expect(mockWorkflowInstance.execute).toHaveBeenCalledWith(
         expect.objectContaining({
           issueNumber: undefined, // Should be undefined when no issue number
@@ -168,7 +180,6 @@ describe("requestReviewTool", () => {
         issue_number: 123,
       });
 
-      const mockWorkflowInstance = mockWorkflowFunctions.ReviewAgentWorkflow();
       mockWorkflowInstance.execute.mockRejectedValue(new Error("Workflow execution failed"));
 
       // Act & Assert
@@ -189,7 +200,6 @@ describe("requestReviewTool", () => {
         issue_number: 123,
       });
 
-      const mockWorkflowInstance = mockWorkflowFunctions.ReviewAgentWorkflow();
       mockWorkflowInstance.execute.mockRejectedValue("String error");
 
       // Act & Assert
@@ -218,7 +228,6 @@ describe("requestReviewTool", () => {
       // Assert
       expect(result).toBeDefined();
       
-      const mockWorkflowInstance = mockWorkflowFunctions.ReviewAgentWorkflow();
       expect(mockWorkflowInstance.execute).toHaveBeenCalledWith(
         expect.objectContaining({
           codingDescription: "", // Empty description should be passed through
