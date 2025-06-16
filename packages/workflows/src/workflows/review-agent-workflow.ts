@@ -2,6 +2,7 @@
  * Review Agent Workflow - Orchestrates ephemeral review agents
  */
 
+import { type ChildProcess, spawn } from "node:child_process";
 import { ErrorFactory, WORKFLOW_ERROR_CODES, WorkflowError } from "../errors/workflow-errors.js";
 import type { ReviewAgentState } from "../types/agent-states.js";
 import type { DatabaseInterface } from "../types/dependencies.js";
@@ -21,6 +22,7 @@ import type { BaseWorkflow } from "./base-workflow.js";
 
 export class ReviewAgentWorkflow implements BaseWorkflow<ReviewAgentConfig, ReviewAgentState> {
   readonly type = "review" as const;
+  private mcpProcesses = new Map<string, ChildProcess>();
 
   constructor(
     private database: DatabaseInterface,
@@ -80,7 +82,18 @@ export class ReviewAgentWorkflow implements BaseWorkflow<ReviewAgentConfig, Revi
         workingDirectory: reviewWorktree.path,
       });
 
-      // 5. Launch review-focused Claude session
+      // 5. Launch MCP server for review agent
+      const mcpProcess = await this.launchMCPServer({
+        agentId: reviewInstanceId,
+        workspace: reviewWorktree.path,
+        parentInstanceId: config.parentInstanceId,
+        parentTmuxSession: config.parentTmuxSession,
+        issue: config.issueNumber?.toString(),
+        branch: reviewWorktree.branch,
+        session: tmuxSession.name,
+      });
+
+      // 6. Launch review-focused Claude session
       const claudeSession = await this.launchClaudeFunc({
         workspacePath: reviewWorktree.path,
         environmentVars: {
@@ -91,7 +104,7 @@ export class ReviewAgentWorkflow implements BaseWorkflow<ReviewAgentConfig, Revi
         },
       });
 
-      // 6. Update database with resources
+      // 7. Update database with resources
       await this.database.updateInstance(reviewInstanceId, {
         status: "started", // Use core's status - agent is started and working
         worktree_path: reviewWorktree.path,
@@ -322,6 +335,14 @@ Use the appropriate MCP tools to implement your decision.`;
       if (!instance) return;
 
       // Cleanup in reverse order of creation
+
+      // Terminate MCP process first
+      const mcpProcess = this.mcpProcesses.get(instanceId);
+      if (mcpProcess) {
+        mcpProcess.kill();
+        this.mcpProcesses.delete(instanceId);
+      }
+
       if (instance.claude_pid) {
         // Note: core uses claude_pid, not claude_session_id
         await this.terminateClaudeFunc(instance.claude_pid.toString());
@@ -359,6 +380,57 @@ Use the appropriate MCP tools to implement your decision.`;
       // Log cleanup failure but don't throw
       console.error(`Cleanup failed for review ${instanceId}:`, cleanupError);
     }
+  }
+
+  private async launchMCPServer(config: {
+    agentId: string;
+    workspace: string;
+    parentInstanceId: string;
+    parentTmuxSession: string;
+    issue?: string;
+    branch: string;
+    session: string;
+  }): Promise<ChildProcess> {
+    const args = [
+      "packages/mcp-review/dist/server.js",
+      "--agent-id",
+      config.agentId,
+      "--workspace",
+      config.workspace,
+      "--parent-instance-id",
+      config.parentInstanceId,
+      "--parent-tmux-session",
+      config.parentTmuxSession,
+      "--branch",
+      config.branch,
+      "--session",
+      config.session,
+    ];
+
+    if (config.issue) {
+      args.push("--issue", config.issue);
+    }
+
+    const mcpProcess = spawn("node", args, {
+      stdio: ["pipe", "pipe", "pipe"],
+      cwd: process.cwd(),
+    });
+
+    // Handle process events
+    mcpProcess.on("error", (error) => {
+      console.error(`MCP Review server error for ${config.agentId}:`, error);
+    });
+
+    mcpProcess.on("exit", (code) => {
+      console.log(`MCP Review server exited for ${config.agentId} with code ${code}`);
+      this.mcpProcesses.delete(config.agentId);
+    });
+
+    // Store process reference
+    this.mcpProcesses.set(config.agentId, mcpProcess);
+
+    console.log(`MCP Review server launched for agent ${config.agentId} (PID: ${mcpProcess.pid})`);
+    return mcpProcess;
   }
 
   private async injectReviewIntoTmux(
