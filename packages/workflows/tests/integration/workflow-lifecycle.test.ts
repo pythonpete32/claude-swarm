@@ -33,10 +33,26 @@ describe("Workflow Lifecycle Integration", () => {
 
     codingWorkflow = new CodingAgentWorkflow(
       mockDatabase,
-      ...Object.values(mockCoreFunctions).slice(0, 6) // Exclude createPullRequest
+      mockCoreFunctions.createWorktree,
+      mockCoreFunctions.removeWorktree,
+      mockCoreFunctions.createTmuxSession,
+      mockCoreFunctions.killSession,
+      mockCoreFunctions.launchClaudeSession,
+      mockCoreFunctions.terminateClaudeSession,
+      mockCoreFunctions.sendKeys
     );
 
-    reviewWorkflow = new ReviewAgentWorkflow(mockDatabase, ...Object.values(mockCoreFunctions));
+    reviewWorkflow = new ReviewAgentWorkflow(
+      mockDatabase,
+      mockCoreFunctions.createWorktree,
+      mockCoreFunctions.removeWorktree,
+      mockCoreFunctions.createTmuxSession,
+      mockCoreFunctions.killSession,
+      mockCoreFunctions.launchClaudeSession,
+      mockCoreFunctions.terminateClaudeSession,
+      mockCoreFunctions.createPullRequest,
+      mockCoreFunctions.sendKeys
+    );
   });
 
   describe("Coding to Review Workflow Integration", () => {

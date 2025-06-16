@@ -4,7 +4,7 @@
 
 import { type ChildProcess, spawn } from "node:child_process";
 import { ErrorFactory, WORKFLOW_ERROR_CODES, WorkflowError } from "../errors/workflow-errors.js";
-import { buildReviewPrompt, type PromptData } from "../prompts/prompt-builder.js";
+import { type PromptData, buildReviewPrompt } from "../prompts/prompt-builder.js";
 import type { ReviewAgentState } from "../types/agent-states.js";
 import type { DatabaseInterface } from "../types/dependencies.js";
 import {
@@ -97,8 +97,8 @@ export class ReviewAgentWorkflow implements BaseWorkflow<ReviewAgentConfig, Revi
 
       // 6. Get original prompt context from parent instance (already retrieved above)
 
-      const originalPromptData = (parentInstance as any).prompt_context 
-        ? JSON.parse((parentInstance as any).prompt_context) as PromptData
+      const originalPromptData = (parentInstance as any).prompt_context
+        ? (JSON.parse((parentInstance as any).prompt_context) as PromptData)
         : { baseInstructions: "No original task context available", customInstructions: "" };
 
       // 7. Build review prompt with original context
@@ -134,7 +134,10 @@ export class ReviewAgentWorkflow implements BaseWorkflow<ReviewAgentConfig, Revi
         // Type assertion needed until schema types are regenerated
         ...({
           prompt_used: reviewPrompt,
-          prompt_context: JSON.stringify({ originalTask: originalPromptData, reviewCriteria: config.reviewPrompt }),
+          prompt_context: JSON.stringify({
+            originalTask: originalPromptData,
+            reviewCriteria: config.reviewPrompt,
+          }),
         } as any),
       });
 
@@ -476,7 +479,7 @@ The review agent has completed its analysis. ${decision === "approve" ? "You may
 `;
 
       // Inject the review message into the TMUX session
-      await sendKeys(sessionName, reviewMessage);
+      await this.sendKeysFunc(sessionName, reviewMessage);
     } catch (error) {
       console.error(`Failed to inject review into TMUX session ${sessionName}:`, error);
       // Don't throw - this is a best-effort operation

@@ -180,15 +180,48 @@ export const createMockCoreFunctions = () => ({
 
 // Helper to create test database with pre-populated data
 export const createTestDatabase = (
-  instances = [TEST_INSTANCES.coding],
-  relationships = TEST_RELATIONSHIPS
+  initialInstances = [TEST_INSTANCES.coding],
+  initialRelationships = TEST_RELATIONSHIPS
 ) => {
   const mockDb = createMockDatabase();
+
+  // Create mutable arrays that can be updated
+  const instances = [...initialInstances];
+  const relationships = [...initialRelationships];
+
+  // Mock createInstance to actually add to instances array
+  mockDb.createInstance = vi.fn().mockImplementation((newInstance: any) => {
+    instances.push({
+      ...newInstance,
+      created_at: new Date(),
+      last_activity: new Date(),
+    });
+    return Promise.resolve(undefined);
+  });
+
+  // Mock updateInstance to actually update the instances array
+  mockDb.updateInstance = vi.fn().mockImplementation((id: string, updates: any) => {
+    const index = instances.findIndex((i) => i.id === id);
+    if (index !== -1) {
+      instances[index] = { ...instances[index], ...updates, last_activity: new Date() };
+    }
+    return Promise.resolve(undefined);
+  });
 
   // Setup getInstance responses
   mockDb.getInstance = vi.fn().mockImplementation((id: string) => {
     const instance = instances.find((i) => i.id === id);
     return Promise.resolve(instance || null);
+  });
+
+  // Mock createRelationship to actually add to relationships array
+  mockDb.createRelationship = vi.fn().mockImplementation((newRelationship: any) => {
+    relationships.push({
+      ...newRelationship,
+      id: `rel-${relationships.length + 1}`,
+      created_at: new Date(),
+    });
+    return Promise.resolve(undefined);
   });
 
   // Setup getRelationships responses

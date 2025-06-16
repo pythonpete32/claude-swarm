@@ -90,9 +90,11 @@ export class CodingAgentWorkflow implements BaseWorkflow<CodingAgentConfig, Codi
           ...config.claudeOptions?.environmentVars,
         },
         // Spread other claudeOptions but not environmentVars
-        ...config.claudeOptions ? 
-          Object.fromEntries(Object.entries(config.claudeOptions).filter(([key]) => key !== 'environmentVars')) 
-          : {},
+        ...(config.claudeOptions
+          ? Object.fromEntries(
+              Object.entries(config.claudeOptions).filter(([key]) => key !== "environmentVars")
+            )
+          : {}),
       });
 
       // 6. Inject prompt via TMUX
