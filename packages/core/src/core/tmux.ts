@@ -900,6 +900,59 @@ export async function launchClaudeInSession(
 }
 
 /**
+ * Sends keys/text to a tmux session
+ *
+ * @param sessionName Name of the target session
+ * @param text Text to send to the session
+ * @param pressEnter Whether to press Enter after sending text (default: true)
+ * @throws TmuxError if session doesn't exist or send fails
+ */
+export async function sendKeys(
+  sessionName: string,
+  text: string,
+  pressEnter = true,
+): Promise<void> {
+  const sanitizedSessionName = sanitizeSessionName(sessionName);
+
+  // Validate session exists
+  const session = await getSessionInfo(sanitizedSessionName);
+  if (!session.isActive) {
+    throw ErrorFactory.tmux(
+      ERROR_CODES.TMUX_SESSION_INACTIVE,
+      `Session '${sanitizedSessionName}' exists but is not active`,
+      { name: sanitizedSessionName },
+    );
+  }
+
+  try {
+    // Split text into lines and send each line separately to handle multiline text
+    const lines = text.split("\n");
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+
+      // Send the line
+      await execSecure("tmux", ["send-keys", "-t", sanitizedSessionName, line]);
+
+      // Press Enter after each line except the last one (unless pressEnter is true)
+      if (i < lines.length - 1 || pressEnter) {
+        await execSecure("tmux", ["send-keys", "-t", sanitizedSessionName, "Enter"]);
+      }
+    }
+  } catch (error) {
+    throw ErrorFactory.tmux(
+      ERROR_CODES.TMUX_COMMAND_FAILED,
+      `Failed to send keys to session '${sanitizedSessionName}'`,
+      {
+        sessionName: sanitizedSessionName,
+        text,
+        error: error instanceof Error ? error.message : String(error),
+      },
+    );
+  }
+}
+
+/**
  * Helper function to match session names against patterns.
  * Supports basic glob-style patterns with * wildcards.
  */
@@ -923,4 +976,5 @@ export const defaultTmuxOperations = {
   getSessionInfo,
   validateTmuxAvailable,
   launchClaudeInSession,
+  sendKeys,
 };

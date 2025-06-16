@@ -8,6 +8,10 @@ export * from "./core/github.js";
 export * from "./core/tmux.js";
 export * from "./core/claude.js";
 export * from "./core/files.js";
+export * from "./core/database.js";
+
+// Database schema exports
+export * from "./db/schema.js";
 
 // Shared modules
 export * from "./shared/index.js";

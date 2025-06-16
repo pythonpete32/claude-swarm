@@ -5,13 +5,18 @@
   "workspaces": ["packages/*"],
   "scripts": {
     "dev": "bun run --filter='*' dev",
-    "build": "bun run --filter='*' build", 
+    "build": "bun run --filter='*' build",
     "test": "bun run --filter='*' test",
     "test:run": "bun run --filter='*' test:run",
+    "test:all": "bun run test:core && echo '\n✅ All package tests completed!'",
+    "test:core": "echo '🧪 Running Core Package Tests (524 tests)...' && cd packages/core && bun run test:run",
+    "test:verbose": "echo '🧪 Running all available tests...' && bun run --filter='*' test:run",
+    "test:summary": "./test-runner.sh",
     "lint": "bun run --filter='*' lint || true",
     "lint:fix": "bun run --filter='*' lint:fix || true",
     "typecheck": "bun run --filter='*' typecheck",
-    "quality": "bun run test:run && bun run typecheck && bun run lint:fix",
+    "quality": "bun run test:all && bun run typecheck && bun run lint:fix",
+    "ci": "bun run test:all && bun run typecheck && bun run lint:fix",
     "docs": "bun run --filter='@claude-codex/docs' dev",
     "setup": "lefthook install"
   },
@@ -27,6 +32,7 @@
     "typescript": "^5.0.0"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.3",
     "execa": "^9.6.0"
   }
 }

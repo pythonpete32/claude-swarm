@@ -737,6 +737,19 @@ export async function initializeDatabase(
   }
 }
 
+// Default database instance for convenience
+let defaultDatabase: DatabaseInterface | null = null;
+
+/**
+ * Get or create the default database instance
+ */
+export async function getDatabase(): Promise<DatabaseInterface> {
+  if (!defaultDatabase) {
+    defaultDatabase = await initializeDatabase();
+  }
+  return defaultDatabase;
+}
+
 // Export types for external use
 export type {
   Instance,
