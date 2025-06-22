@@ -728,16 +728,29 @@ export default class TextBuffer {
     //     common editor behaviour and avoids the unintuitive merge that led
     //     to "cd"+"ef" → "cdef" in the failing tests.
 
-    // Append the last part combined with original after text as a new line
-    const last = parts[parts.length - 1] + after;
-    this.lines.splice(this.cursorRow + (parts.length - 1), 0, last);
+    const lastIdx = this.cursorRow + parts.length - 1;
+    const lastPart = parts[parts.length - 1]!;
 
-    // Update cursor position to end of last inserted part (before 'after')
-    this.cursorRow += parts.length - 1;
-    // `parts` is guaranteed to have at least one element here because
-    // `split("\n")` always returns an array with ≥1 entry.  Tell the
-    // compiler so we can pass a plain `string` to `cpLen`.
-    this.cursorCol = cpLen(parts[parts.length - 1]!);
+    if (this.cursorCol === 0) {
+      // At column‑0 we want to keep the original "after" text as its own line
+      // rather than merging it with the pasted content.  This mirrors common
+      // editor behaviour where inserting at the start of a line pushes the
+      // existing text down.
+      this.lines.splice(lastIdx, 0, lastPart);
+      if (after !== "") {
+        this.lines.splice(lastIdx + 1, 0, after);
+      }
+    } else {
+      // Mid‑line paste – merge the remainder of the original line with the
+      // final inserted part so the text to the right of the caret stays on the
+      // same row.
+      this.lines.splice(lastIdx, 0, lastPart + after);
+    }
+
+    // Update cursor position to end of last inserted part (before any "after"
+    // text that might have been pushed into a separate line).
+    this.cursorRow = lastIdx;
+    this.cursorCol = cpLen(lastPart);
 
     this.version++;
     return true;
